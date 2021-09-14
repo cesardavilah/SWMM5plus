@@ -40,6 +40,7 @@ module interface
     public :: interface_update_linkResult
     public :: interface_write_output_line
     public :: interface_export_link_results
+    public :: prints_surdepths
 
     !% -------------------------------------------------------------------------------
     !% PRIVATE
@@ -218,6 +219,13 @@ module interface
             integer(c_int)                    :: api_update_linkResult
         end function api_update_linkResult
 
+        function get_node_surdepth(k)
+            use, intrinsic :: iso_c_binding
+            implicit none
+            integer(c_int), value, intent(in) :: k
+            real(c_double)        :: get_node_surdepth
+        end function get_node_surdepth
+
     end interface
 
     procedure(api_initialize),             pointer :: ptr_api_initialize
@@ -239,6 +247,7 @@ module interface
     procedure(api_write_output_line),      pointer :: ptr_api_write_output_line
     procedure(api_update_nodeResult),      pointer :: ptr_api_update_nodeResult
     procedure(api_update_linkResult),      pointer :: ptr_api_update_linkResult
+    procedure(get_node_surdepth),          pointer :: ptr_get_node_surdepth
 
     !% Error handling
     character(len = 1024) :: errmsg
@@ -246,6 +255,20 @@ module interface
 
 contains
 
+    subroutine prints_surdepths()
+        integer :: ii
+
+        ! Loading the get_node_surdepth fcn
+        c_lib%procname = "get_node_surdepth"
+        call c_lib_load(c_lib, errstat, errmsg)
+        if (errstat /= 0) then
+            print *, "ERROR: " // trim(errmsg)
+        end if
+        call c_f_procpointer(c_lib%procaddr, ptr_get_node_surdepth)
+        do ii = 1, SWMM_N_node
+            print*, "NAME ", Node%Names(ii)%str, "VAL", ptr_get_node_surdepth(ii-1)
+        end do
+    end subroutine prints_surdepths
     !%=============================================================================
     !% PUBLIC
     !%=============================================================================

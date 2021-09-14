@@ -70,6 +70,8 @@ program main
         write(*,"(2A,i5,A)") new_line(" "), 'begin initialization [Processor ', this_image(), "] ..."
     call initialize_all()
 
+    call prints_surdepths()
+    stop
     ! --- Time Loop
     if (setting%Verbose) &
         write(*,"(2A,i5,A)") new_line(" "), 'begin timeloop [Processor ', this_image(), "]"

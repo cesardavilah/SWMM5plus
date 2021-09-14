@@ -185,6 +185,9 @@ int check_api_is_initialized(Interface* api);
 int api_load_vars(void * f_api);
 int getTokens(char *s);
 
+// Test Utility
+double DLLEXPORT get_node_surdepth(int k);
+
 #ifdef __cplusplus
 }   // matches the linkage specification from above */
 #endif

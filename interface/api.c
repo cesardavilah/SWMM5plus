@@ -1001,3 +1001,10 @@ int getTokens(char *s)
     }
     return(n);
 }
+
+// Utility:
+
+double DLLEXPORT get_node_surdepth(int k)
+{
+    return Node[k].invertElev;
+}
