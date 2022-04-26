@@ -367,6 +367,14 @@ module define_settings
         real(8) :: energy_correction_factor = 1.0 
     end type ConstantType
 
+    !% structure to setup a simple time-setting based controls for links
+    type ControlType
+        integer :: NumControl = 0
+        integer, allocatable :: ControlledLinks(:)
+        real(8), allocatable :: TimeArray(:,:) !% Arrays of time to change setting. Each column is for a each of the links
+        real(8), allocatable :: SettingsArray(:,:) !% Arrays of settings. Each column is for a each of the links
+    end type ControlType
+
     !% setting%Debug
     type DebugType
         type(DebugFileYNType) :: File
@@ -620,6 +628,7 @@ module define_settings
         type(BCPropertiesType)   :: BC
         type(CaseNameType)       :: CaseName  ! name of case
         type(ConstantType)       :: Constant ! Constants
+        type(ControlType)        :: Control  ! Control data structure
         type(DebugType)          :: Debug
         type(DiscretizationType) :: Discretization
         type(EpsilonType)        :: Eps ! epsilons used to provide bandwidth for comparisons
@@ -700,11 +709,19 @@ contains
         !%------------------------------------------------------------------
             character(kind=json_CK, len=:), allocatable :: c
             real(8) :: real_value
+            real(8), allocatable :: real_array(:)
             integer :: integer_value
+            integer, allocatable :: integer_array(:)
             logical :: logical_value
             logical :: found
             logical, pointer :: jsoncheck
-            type(json_file) :: json
+            type(json_file)  :: json
+
+            real(8),allocatable :: rvec(:)
+            integer :: ii,n_controls, n_cols,n_rows,var_type
+            type(json_value),pointer :: PointerMatrix,row
+            type(json_core) :: core
+
             character(64) :: subroutine_name = 'def_load_settings'
         !%------------------------------------------------------------------
         !% Preliminaries
@@ -951,6 +968,79 @@ contains
         call json%get('Constant.gravity', real_value, found)
         if (found) setting%Constant%gravity = real_value
         if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Constant.gravity not found'
+
+    !% Control. =====================================================================
+    !%                       Control.NumControl
+        call json%info('Control.ControlledLinks',found,var_type,n_controls)
+        if (found) setting%Control%NumControl = n_controls
+        if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Control.ControlledLinks not found'
+
+        if (n_controls > zeroI) then
+            !%                       Control.ControlledLinks
+            call json%get('Control.ControlledLinks', integer_array, found)
+            if (found) setting%Control%ControlledLinks = integer_array
+            if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Control.ControlledLinks not found'
+
+            !% Control. =====================================================================
+            !%                       Control.TimeArray
+            !% get number of rows and columns
+
+            !% assuming data stored by column, each column has the same number of elements, and is the same data type
+            call json%info('Control.TimeArray',found,var_type,n_cols)
+            if (.not. found) stop 'error: Control.TimeArray not found'
+            if(n_cols > n_controls) stop 'error: Control.TimeArray has more columns than number of controlled links'
+
+            call json%info('Control.TimeArray(1)',found,var_type,n_rows)
+            if (.not. found) stop 'error: Control.TimeArray(1) not found'
+
+            !% get a pointer to the wind matrix:
+            call json%get('Control.TimeArray',PointerMatrix)
+            if (.not. associated(PointerMatrix)) stop "Error - json file - setting " // 'Control.TimeArray not found'
+
+            allocate(setting%Control%TimeArray(n_rows,n_cols))
+            !% grab each column of the PointerMatrix:
+            do ii=1,n_cols
+                call core%get_child(PointerMatrix,ii,row)
+                if (.not. associated(row)) stop 'error: TimeArray column not found'
+                call core%get(row,rvec)
+                if (.not. allocated(rvec)) stop 'error: could not get TimeArray real column'
+                if (size(rvec)/=n_rows) stop 'error: Control.TimeArray column is wrong size'
+                setting%Control%TimeArray(:,ii) = rvec
+                deallocate(rvec)
+                nullify(row)
+            end do
+            nullify(PointerMatrix)
+            print*, setting%Control%TimeArray, 'setting%Control%TimeArray'
+
+            !% Control. =====================================================================
+            !%                       Control.SettingsArray
+            !% assuming data stored by column, each column has the same number of elements, and is the same data type
+            call json%info('Control.SettingsArray',found,var_type,n_cols)
+            if (.not. found) stop 'error: Control.SettingsArray not found'
+            if(n_cols > n_controls) stop 'error: Control.SettingsArray has more columns than number of controlled links'
+
+            call json%info('Control.SettingsArray(1)',found,var_type,n_rows)
+            if (.not. found) stop 'error: Control.SettingsArray(1) not found'
+
+            !% get a pointer to the PointerMatrix:
+            call json%get('Control.SettingsArray',PointerMatrix)
+            if (.not. associated(PointerMatrix)) stop "Error - json file - setting " // 'Control.SettingsArray not found'
+
+            allocate(setting%Control%SettingsArray(n_rows,n_cols))
+            !% grab each column of the PointerMatrix:
+            do ii=1,n_cols
+                call core%get_child(PointerMatrix,ii,row)
+                if (.not. associated(row)) stop 'error: SettingsArray column not found'
+                call core%get(row,rvec)
+                if (.not. allocated(rvec)) stop 'error: could not get SettingsArray real column'
+                if (size(rvec)/=n_rows) stop 'error: Control.TimeArray column is wrong size'
+                setting%Control%SettingsArray(:,ii) = rvec
+                deallocate(rvec)
+                nullify(row)
+            end do
+            nullify(PointerMatrix)
+            print*, setting%Control%SettingsArray, 'setting%Control%SettingsArray'
+        end if
 
     !% Discretization. =====================================================================
         !% -- Nominal element length adjustment
