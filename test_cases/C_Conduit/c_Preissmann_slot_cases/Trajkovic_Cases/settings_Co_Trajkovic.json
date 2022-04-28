@@ -9,7 +9,7 @@
         "LinkShortingFactor" : 0.33,
         "MinElemLengthFactor" : 0.5,
         "MinElemLengthMethod" : "RawElemLength",
-        "NominalElemLength" : 0.036
+        "NominalElemLength" : 0.1
     },
     "Limiter" : {
         "BC" : {
