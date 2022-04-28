@@ -1151,7 +1151,7 @@ contains
         !% Declarations:
             integer          :: ii, loc
             real(8)          :: lo, hi, mid, delT, delD, AvailableDistance
-            real(8)          :: NextSetting, GateHeight, GateDistance, tol
+            real(8)          :: TargetSetting, GateHeight, GateDistance, tol
             integer, pointer :: nControls, eIdx
             real(8), pointer :: TimeNow, eSetting(:), TimeArray(:), SettingArray(:)
             real(8), pointer :: PrevSettning, gateSpeed, FullDepth(:)
@@ -1186,52 +1186,23 @@ contains
                 !% a specified dimension of an array. This function works only when
                 !% the current time is above the minimum value in the TimeArray array
                 if (TimeNow > minval(TimeArray)) then
-                    !% HACK: the output of the maxloc function is an vector/array
-                    !% depending on the shape of TimeArray. However, in this case 
-                    !% TimeArray being a vector, the output of maxloc will be a vector 
-                    !% of 1 element. Thus, loc has to be declated as an allocatable 
-                    !% vector. Also the line of code eSetting(eIdx) = max(SettingArray(loc), oneR)
-                    !% will not be possible because eSetting(eIdx) is a scaler and SettingArray(loc)
-                    !% is technically a vector. 
-                    !% the hack fix is summing the output of the maxloc fucntion, which is a scaler
-                    loc = sum(maxloc(TimeArray, mask = TimeArray .LE. TimeNow))
+
+                    loc = maxloc(TimeArray, 1, TimeArray <= TimeNow)
 
                     !% save the previous setting
                     PrevSettning = eSetting(eIdx)
                     !% setting can not be greater than 1
-                    NextSetting = min(SettingArray(loc), oneR)
+                    TargetSetting = min(SettingArray(loc), oneR)
 
                     !% find the time difference between the current time and the time control intervened
                     delT = TimeNow - TimeArray(loc)
-                    delD = NextSetting - PrevSettning
+                    !% fild the difference between the target Setting and the previous Setting
+                    delD = TargetSetting - PrevSettning
                     !% by multiplying the gate speed with delT, we get the distance travelled by the gate
                     !% if it was infinitely long
                     GateDistance = gateSpeed * delT
 
-                    !% now figure out if the gate move up/down
-                    ! if (NextSetting > PrevSettning) then  
-                    !     AvailableDistance = (NextSetting - PrevSettning) * FullDepth(eIdx)
-                    !     if (GateDistance < AvailableDistance) then
-                    !         eSetting(eIdx) = (PrevSettning * FullDepth(eIdx) + GateDistance) / FullDepth(eIdx)
-                    !         gateMoved = .true.
-                    !     else
-                    !         eSetting(eIdx) = NextSetting
-                    !     end if
-
-                    ! else if (NextSetting < PrevSettning) then
-                    !     AvailableDistance = (PrevSettning - NextSetting) * FullDepth(eIdx)
-                    !     if (GateDistance < AvailableDistance) then
-                    !         eSetting(eIdx) = (PrevSettning * FullDepth(eIdx) - GateDistance) / FullDepth(eIdx)
-                    !         gateMoved = .true.
-                    !     else
-                    !         eSetting(eIdx) = NextSetting
-                    !     end if
-                    ! else
-                    !     eSetting(eIdx) = NextSetting
-                    !     gateMoved = .false.
-                    ! end if
-
-                    !% combined way
+                    !% now figure out the gate movement up/down and gate speed
                     if (abs(delD) >= tol) then
                         AvailableDistance = abs(delD) * FullDepth(eIdx)
                         if (GateDistance < AvailableDistance) then
@@ -1239,10 +1210,11 @@ contains
                                 util_sign_with_ones(delD)* GateDistance) / FullDepth(eIdx)
                             gateMoved = .true.
                         else
-                            eSetting(eIdx) = NextSetting
+                            eSetting(eIdx) = TargetSetting
+                            gateMoved = .true.
                         end if
                     else
-                        eSetting(eIdx) = NextSetting
+                        eSetting(eIdx) = TargetSetting
                         gateMoved = .false.
                     end if
                 end if
