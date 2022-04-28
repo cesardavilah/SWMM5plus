@@ -87,6 +87,8 @@ contains
         !if ((setting%Output%Verbose) .and. (this_image() == 1)) print *,'begin init_IC_from_nodedata'
         call init_IC_from_nodedata ()
 
+        !% initialize all the link settings as oneR
+        elemR(:,er_setting) = oneR
         !% --- identify the small and zero depths (must be done before pack)
         call adjust_smalldepth_identify_all ()
         call adjust_zerodepth_identify_all ()
@@ -854,6 +856,7 @@ contains
                     !% integer data
                     elemSI(:,esi_Weir_SpecificType)          = trapezoidal_weir
                     !% real data
+                    elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_EffectiveFullDepth)    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_Rectangular)           = link%R(thisLink,lr_DischargeCoeff1)
                     elemSR(:,esr_Weir_Triangular)            = link%R(thisLink,lr_DischargeCoeff2)
@@ -871,6 +874,7 @@ contains
                     elemSI(:,esi_Weir_SpecificType)          = side_flow
                     elemSI(:,esi_Weir_EndContractions)       = link%I(thisLink,li_weir_EndContrations)
                     !% real data
+                    elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_EffectiveFullDepth)    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_Rectangular)           = link%R(thisLink,lr_DischargeCoeff1)
                     elemSR(:,esr_Weir_RectangularBreadth)    = link%R(thisLink,lr_BreadthScale)
@@ -893,6 +897,7 @@ contains
                     !% integer data
                     elemSI(:,esi_Weir_SpecificType)          = vnotch_weir
                     !% real data
+                    elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_EffectiveFullDepth)    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_Triangular)            = link%R(thisLink,lr_DischargeCoeff1)
                     elemSR(:,esr_Weir_TriangularSideSlope)   = link%R(thisLink,lr_SideSlope)
@@ -907,6 +912,7 @@ contains
                     elemSI(:,esi_Weir_SpecificType)          = transverse_weir
                     elemSI(:,esi_Weir_EndContractions)       = link%I(thisLink,li_weir_EndContrations)
                     !% real data
+                    elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_EffectiveFullDepth)    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_Rectangular)           = link%R(thisLink,lr_DischargeCoeff1)
                     elemSR(:,esr_Weir_RectangularBreadth)    = link%R(thisLink,lr_BreadthScale)
@@ -996,6 +1002,7 @@ contains
                 !% integer data
                 elemI(:,ei_geometryType)    = circular
                 !% real data
+                elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
                 elemSR(:,esr_Orifice_EffectiveFullDepth) = link%R(thisLink,lr_FullDepth)
                 elemSR(:,esr_Orifice_DischargeCoeff)     = link%R(thisLink,lr_DischargeCoeff1)
                 elemSR(:,esr_Orifice_Zcrest)             = elemR(:,er_Zbottom) + link%R(thisLink,lr_InletOffset)

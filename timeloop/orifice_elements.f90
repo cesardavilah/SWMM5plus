@@ -133,8 +133,8 @@ module orifice_elements
         integer, intent(in) :: eIdx
         integer, pointer :: SpecificOrificeType, FlowDirection, GeometryType
         real(8), pointer :: Flowrate, EffectiveHeadDelta, Zcrest, Head, grav
-        real(8), pointer :: RectangularBreadth, NominalDownstreamHead
-        real(8), pointer :: DischargeCoeff, EffectiveFullDepth, FullArea
+        real(8), pointer :: RectangularBreadth, NominalDownstreamHead, FullDepth
+        real(8), pointer :: DischargeCoeff, EffectiveFullDepth, FullArea, ControlSetting
         real(8), pointer :: WeirExponent, VillemonteExponent, SharpCrestedWeirCoeff
         real(8) :: CriticalDepth, AoverL, FractionCritDepth, Coef
         real(8) :: ratio
@@ -157,21 +157,16 @@ module orifice_elements
         DischargeCoeff        => elemSR(eIdx,esr_Orifice_DischargeCoeff)
         EffectiveFullDepth    => elemSR(eIdx,esr_Orifice_EffectiveFullDepth)
         NominalDownstreamHead => elemSR(eIdx,esr_Orifice_NominalDownstreamHead)
+        FullDepth             => elemR(eIdx,er_FullDepth)
+        ControlSetting        => elemR(eIdx,er_setting)
         SharpCrestedWeirCoeff => Setting%Orifice%SharpCrestedWeirCoefficient
         WeirExponent          => Setting%Orifice%TransverseWeirExponent
         VillemonteExponent    => Setting%Orifice%VillemonteCorrectionExponent
         grav                  => setting%constant%gravity
         !%-----------------------------------------------------------------------------
 
-        !% HACK: Hardcoded for Trajkovic cases
-        if (eIdx == 146) then
-            if ((setting%Time%Now .ge. 120.00) .and. (setting%Time%Now .lt. 150.00)) then
-                EffectiveFullDepth = 0.00001
-            else if (setting%Time%Now .ge. 150.00) then
-                EffectiveFullDepth = 0.028
-            end if
-        end if
-
+        !% find the effective full depth based on the control setting
+        EffectiveFullDepth = ControlSetting * FullDepth
 
         !% find full area for flow, and A/L for critical depth calculations
         select case (GeometryType)

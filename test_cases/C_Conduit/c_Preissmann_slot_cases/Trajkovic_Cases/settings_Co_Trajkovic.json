@@ -9,7 +9,7 @@
         "LinkShortingFactor" : 0.33,
         "MinElemLengthFactor" : 0.5,
         "MinElemLengthMethod" : "RawElemLength",
-        "NominalElemLength" : 0.1
+        "NominalElemLength" : 0.036
     },
     "Limiter" : {
         "BC" : {
@@ -95,8 +95,8 @@
         }
     },
     "PreissmannSlot" : {
-        "PreissmannSlotMethod" : "DynamicSlot",
-        "TargetPreissmannCelerity" : 20.0,
+        "PreissmannSlotMethod" : "StaticSlot",
+        "TargetPreissmannCelerity" : 5.0,
         "PreissmannAlpha" : 2.0
     },
     "VariableDT" : {
@@ -119,32 +119,33 @@
             "SmallDepthMultiplier" : 3.0
         },
         "Head" : {
-            "ApplyYN" : true,
+            "ApplyYN" : false,
             "Approach" : "vshape_surcharge_only",
             "Coef" : 1.0
         }
     },
     "Control" : {
-        "ControlledLinks" : [2,4],
+        "Links": ["2","4"],
         "TimeArray" : [
-            [
+            [   
                 120.00,
                 150.00
             ],
-            [
+            [   
                 120.00,
                 150.00
+            ]
+        ], 
+        "SettingsArray" : [
+            [   
+                1.00,
+                1.00
+            ],
+            [   
+                0.00,
+                0.28
             ]
         ],
-        "SettingsArray" : [
-            [
-                0.00,
-                1.00
-            ],
-            [
-                0.00,
-                1.00
-            ]
-        ]
+        "GateSpeed" : [0.1,0.1]
     }
 }

@@ -367,12 +367,19 @@ module define_settings
         real(8) :: energy_correction_factor = 1.0 
     end type ConstantType
 
+    ! setting%Control
     !% structure to setup a simple time-setting based controls for links
     type ControlType
-        integer :: NumControl = 0
-        integer, allocatable :: ControlledLinks(:)
-        real(8), allocatable :: TimeArray(:,:) !% Arrays of time to change setting. Each column is for a each of the links
-        real(8), allocatable :: SettingsArray(:,:) !% Arrays of settings. Each column is for a each of the links
+        integer              :: NumControl = 0          !% number of links controlled
+        real(8)              :: DefaultGateSpeed = 0.1  !% m/s
+        integer, allocatable :: LinkIdx(:)              !% index of the links controlled             
+        integer, allocatable :: ElemIdx(:)              !% index of the elements controlled
+        real(8), allocatable :: TimeArray(:,:)          !% arrays of time to change setting. Each column is for a each of the links (has to be in ascending order)
+        real(8), allocatable :: SettingsArray(:,:)      !% arrays of settings. Each column is for a each of the links
+        real(8), allocatable :: PreviousSettings(:)     !% previous settings of the controls 
+        real(8), allocatable :: GateSpeed(:)            !% array of gate speeds (m/s)
+        logical, allocatable :: GateMovedThisStep(:)    !% T/F if gate moved at a certain stage
+        character(len=:), allocatable :: Links(:)       !% link names from SWMM5 input file to be controlled
     end type ControlType
 
     !% setting%Debug
@@ -707,20 +714,19 @@ contains
         !% Description:
         !%    Loads setting values from external JSON file.
         !%------------------------------------------------------------------
-            character(kind=json_CK, len=:), allocatable :: c
-            real(8) :: real_value
-            real(8), allocatable :: real_array(:)
-            integer :: integer_value
-            integer, allocatable :: integer_array(:)
+            character(kind=json_CK, len=:), allocatable :: c, cvec(:)
+            integer              :: ii, integer_value, n_controls, n_cols, n_rows,var_type
+            integer              :: len_max, n_cols1, n_rows1
+            integer, allocatable :: ilen(:)
+            real(8)              :: real_value
+            real(8), allocatable :: rvec(:)
+            integer, allocatable :: ivec(:)
             logical :: logical_value
             logical :: found
             logical, pointer :: jsoncheck
             type(json_file)  :: json
-
-            real(8),allocatable :: rvec(:)
-            integer :: ii,n_controls, n_cols,n_rows,var_type
+            type(json_core)  :: core
             type(json_value),pointer :: PointerMatrix,row
-            type(json_core) :: core
 
             character(64) :: subroutine_name = 'def_load_settings'
         !%------------------------------------------------------------------
@@ -971,27 +977,26 @@ contains
 
     !% Control. =====================================================================
     !%                       Control.NumControl
-        call json%info('Control.ControlledLinks',found,var_type,n_controls)
+        call json%info('Control.Links',found,var_type,n_controls)
         if (found) setting%Control%NumControl = n_controls
-        if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Control.ControlledLinks not found'
+        if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Control.Links not found'
 
+        
         if (n_controls > zeroI) then
-            !%                       Control.ControlledLinks
-            call json%get('Control.ControlledLinks', integer_array, found)
-            if (found) setting%Control%ControlledLinks = integer_array
-            if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Control.ControlledLinks not found'
+            !%                       Control.Links
+            call json%get('Control.Links', cvec, ilen=ilen)
+            len_max = maxval(ilen)
+            allocate(character(len_max) :: setting%Control%Links(n_controls))
+            setting%Control%Links = cvec
 
-            !% Control. =====================================================================
             !%                       Control.TimeArray
-            !% get number of rows and columns
-
             !% assuming data stored by column, each column has the same number of elements, and is the same data type
             call json%info('Control.TimeArray',found,var_type,n_cols)
             if (.not. found) stop 'error: Control.TimeArray not found'
-            if(n_cols > n_controls) stop 'error: Control.TimeArray has more columns than number of controlled links'
+            if(n_cols /= n_controls) stop 'error: Control.TimeArray has more/less columns than number of controlled links'
 
             call json%info('Control.TimeArray(1)',found,var_type,n_rows)
-            if (.not. found) stop 'error: Control.TimeArray(1) not found'
+            if (.not. found) stop 'error: Control.TimeArray(1) setting%Control%ElemIdxnot found'
 
             !% get a pointer to the wind matrix:
             call json%get('Control.TimeArray',PointerMatrix)
@@ -1010,36 +1015,40 @@ contains
                 nullify(row)
             end do
             nullify(PointerMatrix)
-            print*, setting%Control%TimeArray, 'setting%Control%TimeArray'
 
-            !% Control. =====================================================================
             !%                       Control.SettingsArray
             !% assuming data stored by column, each column has the same number of elements, and is the same data type
-            call json%info('Control.SettingsArray',found,var_type,n_cols)
+            call json%info('Control.SettingsArray',found,var_type,n_cols1)
             if (.not. found) stop 'error: Control.SettingsArray not found'
-            if(n_cols > n_controls) stop 'error: Control.SettingsArray has more columns than number of controlled links'
+            if(n_cols1 /= n_controls) stop 'error: Control.SettingsArray has more/less columns than number of controlled links'
 
-            call json%info('Control.SettingsArray(1)',found,var_type,n_rows)
+            call json%info('Control.SettingsArray(1)',found,var_type,n_rows1)
+            if(n_rows1 /= n_rows) stop 'error: Control.SettingsArray has more/less rows than the Control.TimeArray'
             if (.not. found) stop 'error: Control.SettingsArray(1) not found'
 
             !% get a pointer to the PointerMatrix:
             call json%get('Control.SettingsArray',PointerMatrix)
             if (.not. associated(PointerMatrix)) stop "Error - json file - setting " // 'Control.SettingsArray not found'
 
-            allocate(setting%Control%SettingsArray(n_rows,n_cols))
+            allocate(setting%Control%SettingsArray(n_rows1,n_cols1))
             !% grab each column of the PointerMatrix:
-            do ii=1,n_cols
+            do ii=1,n_cols1
                 call core%get_child(PointerMatrix,ii,row)
-                if (.not. associated(row)) stop 'error: SettingsArray column not found'
+                if (.not. associated(row)) stop "Error - json file - setting " // 'Control.SettingsArray column not found'
                 call core%get(row,rvec)
-                if (.not. allocated(rvec)) stop 'error: could not get SettingsArray real column'
-                if (size(rvec)/=n_rows) stop 'error: Control.TimeArray column is wrong size'
+                if (.not. allocated(rvec)) stop "Error - json file - setting " // 'Could not get SettingsArray real column'
+                if (size(rvec)/=n_rows1) stop "Error - json file - setting " // 'Control.SettingsArray is wrong size'
                 setting%Control%SettingsArray(:,ii) = rvec
                 deallocate(rvec)
                 nullify(row)
             end do
             nullify(PointerMatrix)
-            print*, setting%Control%SettingsArray, 'setting%Control%SettingsArray'
+
+            !%                       Control.GateSpeed
+            call json%get('Control.GateSpeed', rvec, found)
+            if (size(rvec)/=n_controls) stop "Error - json file - setting " // 'Control.GateSpeed number of columns does not match the total number of controls'
+            if (found) setting%Control%GateSpeed = rvec
+            if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Control.GateSpeed not found'
         end if
 
     !% Discretization. =====================================================================

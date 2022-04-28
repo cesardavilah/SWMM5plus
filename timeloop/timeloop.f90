@@ -366,6 +366,9 @@ contains
         !% --- repack all the dynamic arrays
         call pack_dynamic_arrays()
 
+        !% --- evaluate controls defined in the setting file
+        call control_evaluate()
+
         !% --- ensure that the conservative flux terms are exactly zero in the entire array
         !%     so that we can be confident of conservation computation. 
         faceR(:,fr_Flowrate_Conservative) = zeroR  
@@ -1136,6 +1139,117 @@ contains
             elemR(:,er_Temp04) = nullvalueR
 
     end subroutine tl_limit_LatInflow_dt
+!%
+!%==========================================================================
+!%==========================================================================
+!%
+    subroutine control_evaluate()
+        !%------------------------------------------------------------------
+        !% Description:
+        !% Evaluates control and updates elemR(:,er_setting) column
+        !%------------------------------------------------------------------
+        !% Declarations:
+            integer          :: ii, loc
+            real(8)          :: lo, hi, mid, delT, delD, AvailableDistance
+            real(8)          :: NextSetting, GateHeight, GateDistance, tol
+            integer, pointer :: nControls, eIdx
+            real(8), pointer :: TimeNow, eSetting(:), TimeArray(:), SettingArray(:)
+            real(8), pointer :: PrevSettning, gateSpeed, FullDepth(:)
+            logical, pointer :: gateMoved
+        !%------------------------------------------------------------------
+        !% Preliminaries:
+        if (crashYN) return
+        !%------------------------------------------------------------------
+        !% Aliases:
+        TimeNow   => setting%Time%Now 
+        nControls => setting%Control%NumControl
+        eSetting  => elemR(:,er_setting)
+        FullDepth => elemR(:,er_FullDepth)
+
+        !% tolerance value
+        tol = 1e-6
+        !% only use controls if it is present in the settings file
+        if (nControls > zeroI) then
+            do ii = 1,nControls
+                eIdx          => setting%Control%ElemIdx(ii)
+                TimeArray     => setting%Control%TimeArray(:,ii)
+                SettingArray  => setting%Control%SettingsArray(:,ii)
+                PrevSettning  => setting%Control%PreviousSettings(ii)
+                gateSpeed     => setting%Control%GateSpeed(ii)
+                gateMoved     => setting%Control%GateMovedThisStep(ii)
+
+                !% now find where the current time (TImeNow) falls between
+                !% the control time array (TimeArray)
+                !% here, it is found using the maxloc Intrinsic function
+                !% Returns the location of the minimum value of all elements 
+                !% in an array, a set of elements in an array, or elements in 
+                !% a specified dimension of an array. This function works only when
+                !% the current time is above the minimum value in the TimeArray array
+                if (TimeNow > minval(TimeArray)) then
+                    !% HACK: the output of the maxloc function is an vector/array
+                    !% depending on the shape of TimeArray. However, in this case 
+                    !% TimeArray being a vector, the output of maxloc will be a vector 
+                    !% of 1 element. Thus, loc has to be declated as an allocatable 
+                    !% vector. Also the line of code eSetting(eIdx) = max(SettingArray(loc), oneR)
+                    !% will not be possible because eSetting(eIdx) is a scaler and SettingArray(loc)
+                    !% is technically a vector. 
+                    !% the hack fix is summing the output of the maxloc fucntion, which is a scaler
+                    loc = sum(maxloc(TimeArray, mask = TimeArray .LE. TimeNow))
+
+                    !% save the previous setting
+                    PrevSettning = eSetting(eIdx)
+                    !% setting can not be greater than 1
+                    NextSetting = min(SettingArray(loc), oneR)
+
+                    !% find the time difference between the current time and the time control intervened
+                    delT = TimeNow - TimeArray(loc)
+                    delD = NextSetting - PrevSettning
+                    !% by multiplying the gate speed with delT, we get the distance travelled by the gate
+                    !% if it was infinitely long
+                    GateDistance = gateSpeed * delT
+
+                    !% now figure out if the gate move up/down
+                    ! if (NextSetting > PrevSettning) then  
+                    !     AvailableDistance = (NextSetting - PrevSettning) * FullDepth(eIdx)
+                    !     if (GateDistance < AvailableDistance) then
+                    !         eSetting(eIdx) = (PrevSettning * FullDepth(eIdx) + GateDistance) / FullDepth(eIdx)
+                    !         gateMoved = .true.
+                    !     else
+                    !         eSetting(eIdx) = NextSetting
+                    !     end if
+
+                    ! else if (NextSetting < PrevSettning) then
+                    !     AvailableDistance = (PrevSettning - NextSetting) * FullDepth(eIdx)
+                    !     if (GateDistance < AvailableDistance) then
+                    !         eSetting(eIdx) = (PrevSettning * FullDepth(eIdx) - GateDistance) / FullDepth(eIdx)
+                    !         gateMoved = .true.
+                    !     else
+                    !         eSetting(eIdx) = NextSetting
+                    !     end if
+                    ! else
+                    !     eSetting(eIdx) = NextSetting
+                    !     gateMoved = .false.
+                    ! end if
+
+                    !% combined way
+                    if (abs(delD) >= tol) then
+                        AvailableDistance = abs(delD) * FullDepth(eIdx)
+                        if (GateDistance < AvailableDistance) then
+                            eSetting(eIdx) = (PrevSettning * FullDepth(eIdx) + &
+                                util_sign_with_ones(delD)* GateDistance) / FullDepth(eIdx)
+                            gateMoved = .true.
+                        else
+                            eSetting(eIdx) = NextSetting
+                        end if
+                    else
+                        eSetting(eIdx) = NextSetting
+                        gateMoved = .false.
+                    end if
+                end if
+            end do
+        end if
+
+    end subroutine control_evaluate 
 !%
 !%==========================================================================
 !% END OF MODULE
