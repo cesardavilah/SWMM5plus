@@ -16,7 +16,7 @@ START_TIME           00:00:00
 REPORT_START_DATE    03/03/2022
 REPORT_START_TIME    00:00:00
 END_DATE             03/03/2022
-END_TIME             00:06:00
+END_TIME             00:05:20
 SWEEP_START          01/01
 SWEEP_END            12/31
 DRY_DAYS             0
@@ -81,13 +81,13 @@ DRY_ONLY         NO
 3                CIRCULAR     0.1              0          0          0          1                    
 5                CIRCULAR     0.1              0          0          0          1                    
 6                CIRCULAR     0.5              0          0          0          1                    
-2                CIRCULAR     0.014            0          0          0
-4                CIRCULAR     0.1              0          0          0
+2                CIRCULAR     0.015            0          0          0
+4                CIRCULAR     0.033              0          0          0
 
 [INFLOWS]
 ;;Node           Constituent      Time Series      Type     Mfactor  Sfactor  Baseline Pattern
 ;;-------------- ---------------- ---------------- -------- -------- -------- -------- --------
-1                FLOW             ""               FLOW     1.0      1.0      0.0013  
+1                FLOW             ""               FLOW     1.0      1.0      0.0015  
 
 [REPORT]
 ;;Reporting Options

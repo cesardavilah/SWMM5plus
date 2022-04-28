@@ -2,14 +2,14 @@
     "JSON_FoundFileYN" : true,
     "JSON_CheckAllInputYN" : false,
     "CaseName" : {
-        "Long"  : "Trajkovic_CaseA3_nx80_Vslot",
-        "Short" : "TA3_nx80_Vslot"
+        "Long"  : "Trajkovic_CaseA3_dx0.2",
+        "Short" : "TA3_dx0.2"
     },
     "Discretization" : {
         "LinkShortingFactor" : 0.33,
         "MinElemLengthFactor" : 0.5,
         "MinElemLengthMethod" : "RawElemLength",
-        "NominalElemLength" : 0.1
+        "NominalElemLength" : 0.2
     },
     "Limiter" : {
         "BC" : {
@@ -142,7 +142,7 @@
                 1.00
             ],
             [   
-                0.00000001,
+                0.0,
                 0.28
             ]
         ],
