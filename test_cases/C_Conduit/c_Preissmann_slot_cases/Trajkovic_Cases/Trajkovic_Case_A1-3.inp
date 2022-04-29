@@ -53,7 +53,7 @@ DRY_ONLY         NO
 3                0.26082    0.1        0.02       0.1        0         
 4                0.0378     0.1        0.02       0.1        0         
 5                0.0378     0.1        0.02       0.1        0         
-6                0          0.5        0.02       0.5        0         
+6                0          1.5        0.02       0.5        0         
 
 [OUTFALLS]
 ;;Name           Elevation  Type       Stage Data       Gated    Route To        
@@ -71,8 +71,8 @@ DRY_ONLY         NO
 [ORIFICES]
 ;;Name           From Node        To Node          Type         Offset     Qcoeff     Gated    CloseTime 
 ;;-------------- ---------------- ---------------- ------------ ---------- ---------- -------- ----------
-2                2                3                SIDE         0          0.4       NO       0         
-4                4                5                SIDE         0          1.8       NO       0         
+2                2                3                SIDE         0          0.78       NO       0.00027777        
+4                4                5                SIDE         0          0.78       NO       0.00027777         
 
 [XSECTIONS]
 ;;Link           Shape        Geom1            Geom2      Geom3      Geom4      Barrels    Culvert   

@@ -7,6 +7,7 @@ module orifice_elements
     use common_elements
     use adjust
     use define_xsect_tables
+    use utility
     use xsect_tables
 
 
@@ -41,6 +42,9 @@ module orifice_elements
         if (setting%Debug%File%orifice_elements) &
             write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
 
+        !% find the opening of the orifice due to control intervention
+        call orifice_set_settings (eIdx)
+
         call common_head_and_flowdirection_singular &
             (eIdx, esr_Orifice_Zcrest, esr_Orifice_NominalDownstreamHead, esi_Orifice_FlowDirection)
 
@@ -59,9 +63,57 @@ module orifice_elements
         if (setting%Debug%File%orifice_elements)  &
             write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
     end subroutine orifice_toplevel
-! %
+!%
 !%==========================================================================
 !% PRIVATE
+!%==========================================================================
+!%
+    subroutine orifice_set_settings (eIdx)
+        !%-----------------------------------------------------------------------------
+        !% Description:
+        !%   evaluate the orifie setting based on control update
+        !%-----------------------------------------------------------------------------
+        integer, intent(in) :: eIdx !% single ID of element
+
+        real(8), pointer :: FullDepth, EffectiveFullDepth, dt
+        real(8), pointer :: Orate, CurrentSetting, TargetSetting
+        real(8) :: delta, step
+
+        character(64) :: subroutine_name = 'orifice_set_settings'
+        !%-----------------------------------------------------------------------------
+        if (crashYN) return
+        if (setting%Debug%File%orifice_elements) &
+            write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
+
+        
+        FullDepth          => elemR(eIdx,er_FullDepth)
+        EffectiveFullDepth => elemSR(eIdx,esr_Orifice_EffectiveFullDepth)
+        Orate              => elemSR(eIdx,esr_Orifice_Orate)
+        CurrentSetting     => elemR(eIdx,er_setting)
+        TargetSetting      => elemR(eIdx,er_TargetSetting)
+        dt                 => setting%Time%Hydraulics%Dt
+        
+        !% case where adjustment is instantaneous
+        if ((Orate == zeroR) .or. (dt == zeroR)) then
+            CurrentSetting = TargetSetting
+        else
+            delta = TargetSetting - CurrentSetting
+            step = dt / Orate
+            if (step + 0.001 >= abs(delta)) then
+                CurrentSetting = TargetSetting
+            else
+                CurrentSetting = CurrentSetting + util_sign_with_ones(delta) * step
+            end if
+        end if
+
+        !% find effective orifice opening
+        EffectiveFullDepth = FullDepth * CurrentSetting
+
+        if (setting%Debug%File%orifice_elements)  &
+            write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
+    end subroutine orifice_set_settings
+!%
+!%==========================================================================
 !%==========================================================================
 !%
     subroutine orifice_effective_head_delta (eIdx)
@@ -71,7 +123,7 @@ module orifice_elements
         !%-----------------------------------------------------------------------------
         integer, intent(in) :: eIdx !% single ID of element
         real(8), pointer    :: EffectiveHeadDelta, NominalDownstreamHead, Head
-        real(8), pointer    :: Zcrown, Zcrest
+        real(8), pointer    :: EffectiveFullDepth ,Zcrown, Zcrest
         integer, pointer    :: SpecificOrificeType
         real(8)             :: Zmidpt
 
@@ -83,6 +135,7 @@ module orifice_elements
 
         !% inputs
         SpecificOrificeType   => elemSI(eIdx,esi_Orifice_SpecificType)
+        EffectiveFullDepth    => elemSR(eIdx,esr_Orifice_EffectiveFullDepth)
         Head                  => elemR(eIdx,er_Head)
         Zcrown                => elemSR(eIdx,esr_Orifice_Zcrown)
         Zcrest                => elemSR(eIdx,esr_Orifice_Zcrest)
@@ -100,12 +153,14 @@ module orifice_elements
                 EffectiveHeadDelta = Head - Zcrest
             end if
         case (side_orifice)
+            !% considering the effect of control intervention
+            Zcrown = Zcrest + EffectiveFullDepth
+            Zmidpt = (Zcrown + Zcrest)/2.0
             if (Head <= Zcrest) then
                 EffectiveHeadDelta = zeroR
             elseif (Head < Zcrown) then
                 EffectiveHeadDelta = Head - Zcrest
             else
-                Zmidpt = (Zcrown + Zcrest)/2.0
                 if (NominalDownstreamHead < Zmidpt) then
                     EffectiveHeadDelta = Head - Zmidpt
                 else
@@ -132,9 +187,9 @@ module orifice_elements
         !%-----------------------------------------------------------------------------
         integer, intent(in) :: eIdx
         integer, pointer :: SpecificOrificeType, FlowDirection, GeometryType
-        real(8), pointer :: Flowrate, EffectiveHeadDelta, Zcrest, Head, grav
+        real(8), pointer :: Flowrate, EffectiveHeadDelta, Zcrest, Head, grav, dt
         real(8), pointer :: RectangularBreadth, NominalDownstreamHead, FullDepth
-        real(8), pointer :: DischargeCoeff, EffectiveFullDepth, FullArea, ControlSetting
+        real(8), pointer :: DischargeCoeff, EffectiveFullDepth, FullArea
         real(8), pointer :: WeirExponent, VillemonteExponent, SharpCrestedWeirCoeff
         real(8) :: CriticalDepth, AoverL, FractionCritDepth, Coef
         real(8) :: ratio
@@ -158,15 +213,11 @@ module orifice_elements
         EffectiveFullDepth    => elemSR(eIdx,esr_Orifice_EffectiveFullDepth)
         NominalDownstreamHead => elemSR(eIdx,esr_Orifice_NominalDownstreamHead)
         FullDepth             => elemR(eIdx,er_FullDepth)
-        ControlSetting        => elemR(eIdx,er_setting)
         SharpCrestedWeirCoeff => Setting%Orifice%SharpCrestedWeirCoefficient
         WeirExponent          => Setting%Orifice%TransverseWeirExponent
         VillemonteExponent    => Setting%Orifice%VillemonteCorrectionExponent
         grav                  => setting%constant%gravity
         !%-----------------------------------------------------------------------------
-
-        !% find the effective full depth based on the control setting
-        EffectiveFullDepth = ControlSetting * FullDepth
 
         !% find full area for flow, and A/L for critical depth calculations
         select case (GeometryType)
@@ -195,11 +246,10 @@ module orifice_elements
             CriticalDepth = DischargeCoeff / SharpCrestedWeirCoeff * AoverL
             FractionCritDepth = min(EffectiveHeadDelta / CriticalDepth, oneR)
         case (side_orifice)
-            CriticalDepth = EffectiveFullDepth
             FractionCritDepth = min(((Head - Zcrest) / EffectiveFullDepth), oneR)
             !% another adjustment to critical depth is needed
             !% for weir coeff calculation for side orifice
-            CriticalDepth = onehalfR * CriticalDepth
+            CriticalDepth = onehalfR * EffectiveFullDepth
         case default
             print *, 'In ', subroutine_name
             print *, 'CODE ERROR: unknown orifice type, ', SpecificOrificeType,'  in network'

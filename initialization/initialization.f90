@@ -827,16 +827,7 @@ contains
                 setting%Control%LinkIdx = nullvalueI
                 allocate(setting%Control%ElemIdx(nControls))
                 setting%Control%ElemIdx = nullvalueI
-                allocate(setting%Control%GateMovedThisStep(nControls))
-                setting%Control%GateMovedThisStep = nullvalueL
                 !% allocate the previos settings as 1.0
-                allocate(setting%Control%PreviousSettings(nControls))
-                setting%Control%GateMovedThisStep = oneR
-                !% if the user did not provide a gate speed, allocate and use default
-                if (.not. allocated(setting%Control%GateSpeed)) then
-                    allocate(setting%Control%GateSpeed(nControls))
-                    setting%Control%GateSpeed = setting%Control%DefaultGateSpeed
-                end if
  
                 do ii = 1,nControls
                     do jj = 1,size(link%I,dim=1)

@@ -88,6 +88,7 @@ contains
         call init_IC_from_nodedata ()
 
         !% initialize all the link settings as oneR
+        elemR(:,er_TargetSetting) = oneR
         elemR(:,er_setting) = oneR
         !% --- identify the small and zero depths (must be done before pack)
         call adjust_smalldepth_identify_all ()
@@ -992,6 +993,7 @@ contains
                 elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
                 elemSR(:,esr_Orifice_EffectiveFullDepth) = link%R(thisLink,lr_FullDepth)
                 elemSR(:,esr_Orifice_DischargeCoeff)     = link%R(thisLink,lr_DischargeCoeff1)
+                elemSR(:,esr_Orifice_Orate)              = link%R(thisLink,lr_DischargeCoeff2)
                 elemSR(:,esr_Orifice_Zcrest)             = elemR(:,er_Zbottom) + link%R(thisLink,lr_InletOffset)
                 elemSR(:,esr_Orifice_Zcrown)             = elemSR(:,eSr_Orifice_Zcrest) + link%R(thisLink,lr_FullDepth)
                 elemSR(:,esr_Orifice_RectangularBreadth) = link%R(thisLink,lr_BreadthScale)
@@ -1005,6 +1007,7 @@ contains
                 elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
                 elemSR(:,esr_Orifice_EffectiveFullDepth) = link%R(thisLink,lr_FullDepth)
                 elemSR(:,esr_Orifice_DischargeCoeff)     = link%R(thisLink,lr_DischargeCoeff1)
+                elemSR(:,esr_Orifice_Orate)              = link%R(thisLink,lr_DischargeCoeff2)
                 elemSR(:,esr_Orifice_Zcrest)             = elemR(:,er_Zbottom) + link%R(thisLink,lr_InletOffset)
                 elemSR(:,esr_Orifice_Zcrown)             = elemSR(:,esr_Orifice_Zcrest) + link%R(thisLink,lr_FullDepth)
             end where
@@ -1017,7 +1020,6 @@ contains
             call util_crashpoint(8345553)
             return
         end select
-
 
         if (setting%Debug%File%initial_condition) &
         write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"

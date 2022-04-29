@@ -371,14 +371,10 @@ module define_settings
     !% structure to setup a simple time-setting based controls for links
     type ControlType
         integer              :: NumControl = 0          !% number of links controlled
-        real(8)              :: DefaultGateSpeed = 0.1  !% m/s
         integer, allocatable :: LinkIdx(:)              !% index of the links controlled             
         integer, allocatable :: ElemIdx(:)              !% index of the elements controlled
         real(8), allocatable :: TimeArray(:,:)          !% arrays of time to change setting. Each column is for a each of the links (has to be in ascending order)
         real(8), allocatable :: SettingsArray(:,:)      !% arrays of settings. Each column is for a each of the links
-        real(8), allocatable :: PreviousSettings(:)     !% previous settings of the controls 
-        real(8), allocatable :: GateSpeed(:)            !% array of gate speeds (m/s)
-        logical, allocatable :: GateMovedThisStep(:)    !% T/F if gate moved at a certain stage
         character(len=:), allocatable :: Links(:)       !% link names from SWMM5 input file to be controlled
     end type ControlType
 
@@ -1044,11 +1040,6 @@ contains
             end do
             nullify(PointerMatrix)
 
-            !%                       Control.GateSpeed
-            call json%get('Control.GateSpeed', rvec, found)
-            if (size(rvec)/=n_controls) stop "Error - json file - setting " // 'Control.GateSpeed number of columns does not match the total number of controls'
-            if (found) setting%Control%GateSpeed = rvec
-            if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Control.GateSpeed not found'
         end if
 
     !% Discretization. =====================================================================

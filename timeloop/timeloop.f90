@@ -1150,12 +1150,8 @@ contains
         !%------------------------------------------------------------------
         !% Declarations:
             integer          :: ii, loc
-            real(8)          :: lo, hi, mid, delT, delD, AvailableDistance
-            real(8)          :: TargetSetting, GateHeight, GateDistance, tol
             integer, pointer :: nControls, eIdx
-            real(8), pointer :: TimeNow, eSetting(:), TimeArray(:), SettingArray(:)
-            real(8), pointer :: PrevSettning, gateSpeed, FullDepth(:)
-            logical, pointer :: gateMoved
+            real(8), pointer :: TimeNow, TargetSetting(:), TimeArray(:), SettingArray(:)
         !%------------------------------------------------------------------
         !% Preliminaries:
         if (crashYN) return
@@ -1163,20 +1159,14 @@ contains
         !% Aliases:
         TimeNow   => setting%Time%Now 
         nControls => setting%Control%NumControl
-        eSetting  => elemR(:,er_setting)
-        FullDepth => elemR(:,er_FullDepth)
+        TargetSetting  => elemR(:,er_TargetSetting)
 
-        !% tolerance value
-        tol = 1e-6
         !% only use controls if it is present in the settings file
         if (nControls > zeroI) then
             do ii = 1,nControls
                 eIdx          => setting%Control%ElemIdx(ii)
                 TimeArray     => setting%Control%TimeArray(:,ii)
                 SettingArray  => setting%Control%SettingsArray(:,ii)
-                PrevSettning  => setting%Control%PreviousSettings(ii)
-                gateSpeed     => setting%Control%GateSpeed(ii)
-                gateMoved     => setting%Control%GateMovedThisStep(ii)
 
                 !% now find where the current time (TImeNow) falls between
                 !% the control time array (TimeArray)
@@ -1186,37 +1176,9 @@ contains
                 !% a specified dimension of an array. This function works only when
                 !% the current time is above the minimum value in the TimeArray array
                 if (TimeNow > minval(TimeArray)) then
-
                     loc = maxloc(TimeArray, 1, TimeArray <= TimeNow)
-
-                    !% save the previous setting
-                    PrevSettning = eSetting(eIdx)
                     !% setting can not be greater than 1
-                    TargetSetting = min(SettingArray(loc), oneR)
-
-                    !% find the time difference between the current time and the time control intervened
-                    delT = TimeNow - TimeArray(loc)
-                    !% fild the difference between the target Setting and the previous Setting
-                    delD = TargetSetting - PrevSettning
-                    !% by multiplying the gate speed with delT, we get the distance travelled by the gate
-                    !% if it was infinitely long
-                    GateDistance = gateSpeed * delT
-
-                    !% now figure out the gate movement up/down and gate speed
-                    if (abs(delD) >= tol) then
-                        AvailableDistance = abs(delD) * FullDepth(eIdx)
-                        if (GateDistance < AvailableDistance) then
-                            eSetting(eIdx) = (PrevSettning * FullDepth(eIdx) + &
-                                util_sign_with_ones(delD)* GateDistance) / FullDepth(eIdx)
-                            gateMoved = .true.
-                        else
-                            eSetting(eIdx) = TargetSetting
-                            gateMoved = .true.
-                        end if
-                    else
-                        eSetting(eIdx) = TargetSetting
-                        gateMoved = .false.
-                    end if
+                    TargetSetting(eIdx) = min(SettingArray(loc), oneR)
                 end if
             end do
         end if
