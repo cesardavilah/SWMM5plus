@@ -1260,7 +1260,7 @@ module lowlevel_rk2
         integer, intent(in) :: thisCol, Npack
         integer, pointer    :: thisP(:), SlotMethod, fUp(:), fDn(:)
         real(8), pointer    :: AreaN0(:), BreadthMax(:), ellMax(:), fullarea(:)
-        real(8), pointer    :: fullVolume(:), length(:), PNumber(:), PCelerity(:) 
+        real(8), pointer    :: fullVolume(:), length(:), PNumber(:), PCelerity(:), SlotHydRad(:) 
         real(8), pointer    :: SlotWidth(:), SlotVolume(:), SlotDepth(:), SlotArea(:), volume(:)  
         real(8), pointer    :: velocity(:), fPNumber(:), TargetPCelerity, cfl, grav, PreissmannAlpha
 
@@ -1279,6 +1279,7 @@ module lowlevel_rk2
         PCelerity  => elemR(:,er_Preissmann_Celerity)
         SlotWidth  => elemR(:,er_SlotWidth)
         SlotVolume => elemR(:,er_SlotVolume)
+        SlotHydRad => elemR(:,er_SlotHydRadius)
         SlotDepth  => elemR(:,er_SlotDepth)
         SlotArea   => elemR(:,er_SlotArea)
         volume     => elemR(:,er_Volume)
@@ -1331,8 +1332,11 @@ module lowlevel_rk2
                 SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
                 !% find the width of the slot
                 SlotWidth(thisP)  = SlotArea(thisP) / SlotDepth(thisP) 
+                !% find the hydraulic radius of the slot
+                SlotHydRad(thisP) = (SlotDepth(thisP) * SlotWidth(thisP)) / (twoR * SlotDepth(thisP) + SlotWidth(thisP))
                 !% get a new increased preissmann number for the next time step
-                PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
+                ! PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
+                PNumber(thisP) = max(PNumber(thisP)**0.8 - log(PNumber(thisP)),1.0)
             end where
 
         case default

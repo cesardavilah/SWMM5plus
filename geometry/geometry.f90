@@ -1055,9 +1055,9 @@ module geometry
         integer, intent(in) :: thisColP
         integer, pointer    :: thisP(:), Npack
         real(8), pointer    :: SlotWidth(:), SlotVolume(:), SlotDepth(:), SlotArea(:)
-        real(8), pointer    :: volume(:), volumeN0(:), depth(:), area(:)
+        real(8), pointer    :: volume(:), volumeN0(:), depth(:), area(:), hydRadius(:)
         real(8), pointer    :: head(:), headN0(:), fullVolume(:), fullArea(:), fullDepth(:)
-        real(8), pointer    :: Overflow(:), zbottom(:), ellMax(:)
+        real(8), pointer    :: Overflow(:), zbottom(:), ellMax(:), SlotHydRad(:)
 
         character(64) :: subroutine_name = 'geo_slot_adjustments'
         !%-----------------------------------------------------------------------------
@@ -1077,11 +1077,13 @@ module geometry
         fullArea   => elemR(:,er_FullArea)
         head       => elemR(:,er_Head)
         headN0     => elemR(:,er_Head_N0)
+        hydRadius  => elemR(:,er_HydRadius)
         zbottom    => elemR(:,er_Zbottom)
         SlotWidth  => elemR(:,er_SlotWidth)
         SlotVolume => elemR(:,er_SlotVolume)
         SlotDepth  => elemR(:,er_SlotDepth)
         SlotArea   => elemR(:,er_SlotArea)
+        SlotHydRad => elemR(:,er_SlotHydRadius)
 
         !%-----------------------------------------------------------------------------
 
@@ -1093,6 +1095,7 @@ module geometry
                 area(thisP)   = area(thisP)    + SlotArea(thisP)
                 depth(thisP)  = depth(thisP)   + SlotDepth(thisP)
                 head(thisP)   = zbottom(thisP) + fullDepth(thisP) + SlotDepth(thisP)
+                ! hydRadius(thisP) = hydRadius(thisP) + SlotHydRad(thisP)
                 Overflow(thisP) = zeroR
             end where 
         end if

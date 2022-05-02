@@ -16,7 +16,7 @@ START_TIME           00:00:00
 REPORT_START_DATE    11/15/2021
 REPORT_START_TIME    00:00:45
 END_DATE             11/15/2021
-END_TIME             00:05:00
+END_TIME             00:02:00
 SWEEP_START          01/01
 SWEEP_END            12/31
 DRY_DAYS             0
@@ -48,9 +48,9 @@ DRY_ONLY         NO
 [JUNCTIONS]
 ;;Name           Elevation  MaxDepth   InitDepth  SurDepth   Aponded   
 ;;-------------- ---------- ---------- ---------- ---------- ----------
+1                0          0.31       0.073      0.31       0
 2                0          0.094      0.073      0.094      0         
-1                0          0.31       0.073      0.31       0         
-
+         
 [OUTFALLS]
 ;;Name           Elevation  Type       Stage Data       Gated    Route To        
 ;;-------------- ---------- ---------- ---------------- -------- ----------------
@@ -64,8 +64,9 @@ DRY_ONLY         NO
 [CONDUITS]
 ;;Name           From Node        To Node          Length     Roughness  InOffset   OutOffset  InitFlow   MaxFlow   
 ;;-------------- ---------------- ---------------- ---------- ---------- ---------- ---------- ---------- ----------
+1                1                2                14.4      0.012      0          0          0          0 
 3                3                4                1.44      0.012      0.5        0          0          0         
-1                1                2                14.4      0.012      0          0          0          0         
+        
 
 [ORIFICES]
 ;;Name           From Node        To Node          Type         Offset     Qcoeff     Gated    CloseTime 
@@ -77,7 +78,7 @@ DRY_ONLY         NO
 ;;-------------- ------------ ---------------- ---------- ---------- ---------- ---------- ----------
 3                CIRCULAR     0.094            0          0          0          1                    
 1                CIRCULAR     0.094            0          0          0          1                    
-2                CIRCULAR     0.01             0          0          0
+2                CIRCULAR     0.001             0          0          0
 
 [INFLOWS]
 ;;Node           Constituent      Time Series      Type     Mfactor  Sfactor  Baseline Pattern
