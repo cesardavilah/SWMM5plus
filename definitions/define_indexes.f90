@@ -496,6 +496,7 @@ module define_indexes
         enumerator :: eYN_canSurcharge = 1              !% TRUE for element that can surcharge, FALSE where it cannot (static)
         enumerator :: eYN_isSmallDepth                  !% TRUE is use small volume algorithm
         enumerator :: eYN_isSurcharged                  !% TRUE is a surcharged conduit, FALSE is open channel flow
+        enumerator :: eYN_isSlot                        !% TRUE if theres a slot present at the crown of the conduit
         enumerator :: eYN_isZeroDepth                   !% TRUE if volume qualifies as "near zero"
         enumerator :: eYN_isDownstreamJB                !% TRUE if the element is downstream JB
         enumerator :: eYN_isElementDownstreamOfJB       !% TRUE if the element is immediate downstream of JB
@@ -596,8 +597,8 @@ module define_indexes
     integer, parameter :: Ncol_elemSR_Storage = esr_Storage_lastplusone-1
 
     enum, bind(c)
-        enumerator ::  esr_Weir_Rectangular = 1         !% discharge coefficient for the rectangular portion
-        enumerator ::  esr_Weir_Triangular              !% discharge coefficient for triangular weir part
+        enumerator ::  esr_Weir_RectangularCoeff = 1         !% discharge coefficient for the rectangular portion
+        enumerator ::  esr_Weir_TriangularCoeff              !% discharge coefficient for triangular weir part
         enumerator ::  esr_Weir_EffectiveFullDepth      !% effective full depth after control intervention
         enumerator ::  esr_Weir_EffectiveHeadDelta      !% effective head delta across weir
         enumerator ::  esr_Weir_NominalDownstreamHead   !% nominal downstream head
@@ -615,6 +616,7 @@ module define_indexes
     enum, bind(c)
         enumerator ::  esr_Orifice_DischargeCoeff = 1       !% discharge coefficient orifice
         enumerator ::  esr_Orifice_EffectiveFullDepth       !% effective full depth after control intervention
+        enumerator ::  esr_Orifice_EffectiveFullArea        !% effective full area after control intervention
         enumerator ::  esr_Orifice_EffectiveHeadDelta       !% effective head delta across orifice
         enumerator ::  esr_Orifice_NominalDownstreamHead    !% nominal downstream head for orifice
         enumerator ::  esr_Orifice_RectangularBreadth       !% rectangular orifice breadth

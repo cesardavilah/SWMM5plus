@@ -193,7 +193,12 @@ module circular_conduit
             (topwidth, YoverYfull, TCirc, NTCirc, thisP)
 
         !% finally get the topwidth by multiplying the T/Tmax with full depth
-        topwidth(thisP) = max (topwidth(thisP) * fulldepth(thisP), setting%ZeroValue%Topwidth)
+        topwidth(thisP) = topwidth(thisP) * fulldepth(thisP)
+
+        !% Limiter
+        where (topwidth(thisP) <= setting%ZeroValue%Topwidth)
+            topwidth(thisP) = setting%ZeroValue%Topwidth
+        end where
 
     end subroutine circular_topwidth_from_depth
 !%
@@ -262,7 +267,12 @@ module circular_conduit
         hydRadius(thisP) = onefourthR * fulldepth(thisP) * hydRadius(thisP)
 
         !% finally get the perimeter by dividing area by hydRadius
-        perimeter(thisP) = min (area(thisP) / hydRadius(thisP), fullperimeter(thisP))
+        perimeter(thisP) = area(thisP) / hydRadius(thisP)
+
+        !% Limiter
+        where (perimeter(thisP) >= fullperimeter(thisP)) 
+            perimeter(thisP) = fullperimeter(thisP)
+        end where
 
         !% HACK: perimeter correction is needed when the pipe is empty.
     end subroutine circular_perimeter_from_depth
@@ -304,7 +314,7 @@ module circular_conduit
         integer, intent(in) ::  Npack, thisCol
         integer, pointer    :: thisP(:)
         real(8), pointer    :: area(:), topwidth(:), fullHydDepth(:)
-        real(8), pointer    :: depth(:), hyddepth(:)
+        real(8), pointer    :: depth(:), hyddepth(:), fullDepth(:)
         !%-----------------------------------------------------------------------------
         if (crashYN) return
         thisP        => elemPGx(1:Npack,thisCol)
@@ -312,21 +322,22 @@ module circular_conduit
         topwidth     => elemR(:,er_Topwidth)
         depth        => elemR(:,er_Depth)
         hyddepth     => elemR(:,er_HydDepth)
+        fullDepth    => elemR(:,er_FullDepth)
         fullHydDepth => elemR(:,er_FullHydDepth)
         !%--------------------------------------------------
+        !% hydraulic depth from topwidth
+        hyddepth(thisP) = area(thisP) / topwidth(thisP)
 
+        !% Limiters:
         !% calculating hydraulic depth needs conditional since,
         !% topwidth can be zero in circular cross section for both
         !% full and empty condition.
-
-        !% when conduit is empty
-        where (depth(thisP) <= setting%ZeroValue%Depth)
+        !% Condition 1: when conduits are empty/nearly empty
+        where ((depth(thisP) <= fullDepth(thisP)/twoR) .and. (topwidth(thisP) <= setting%ZeroValue%Topwidth))
             hyddepth(thisP) = setting%ZeroValue%Depth
-
-        !% when conduit is not empty
-        elsewhere (depth(thisP) > setting%ZeroValue%Depth)
-            !% limiter for when the conduit is full
-            hyddepth(thisP) = min(area(thisP) / topwidth(thisP), fullHydDepth(thisP))
+        !% Condition 2: when conduits are full/nearly full
+        elsewhere ((depth(thisP) > fullDepth(thisP)/twoR) .and. (topwidth(thisP) <= setting%ZeroValue%Topwidth))
+            hyddepth(thisP) = fullHydDepth(thisP) 
         endwhere
 
     end subroutine circular_hyddepth_from_topwidth
@@ -342,25 +353,28 @@ module circular_conduit
         !% a single element
         !%-----------------------------------------------------------------------------
         integer, intent(in) :: indx
-        real(8), pointer    :: area(:), topwidth(:), fullHydDepth(:), depth(:)
+        real(8), pointer    :: area(:), topwidth(:), fullDepth(:), fullHydDepth(:), depth(:)
         !%-----------------------------------------------------------------------------
         if (crashYN) return
         depth        => elemR(:,er_Depth)
         area         => elemR(:,er_Area)
         topwidth     => elemR(:,er_Topwidth)
         fullHydDepth => elemR(:,er_FullHydDepth)
+        fullDepth    => elemR(:,er_FullDepth)
         !%--------------------------------------------------
 
         !% calculating hydraulic depth needs conditional since,
         !% topwidth can be zero in circular cross section for both
         !% full and empty condition.
 
-        !% when conduit is empty
-        if (depth(indx) <= setting%ZeroValue%Depth) then
+        !% when conduit is empty/nearly empty
+        if ((depth(indx) <= fullDepth(indx)/twoR) .and. (topwidth(indx) <= setting%ZeroValue%Topwidth)) then
             outvalue = setting%ZeroValue%Depth
+        !% when conduit is full/nearly full
+        else if ((depth(indx) > fullDepth(indx)/twoR) .and. (topwidth(indx) <= setting%ZeroValue%Topwidth)) then
+            outvalue = fullHydDepth(indx)
         else
-            !% limiter for when the conduit is full
-            outvalue = min(area(indx) / topwidth(indx), fullHydDepth(indx))
+            outvalue = area(indx) / topwidth(indx)
         endif
 
     end function circular_hyddepth_from_topwidth_singular

@@ -127,8 +127,8 @@ module geometry
         ! print *, 'CCC -- 002- eee',elemR(48,er_Volume)
         ! call util_CLprint () 
 
-        !% compute the head on all non-surcharged elements of CC and JM
-        call geo_head_from_depth (thisColP_NonSurcharged)
+        !% compute the provisional head using depth on all non-surcharged elements of CC and JM
+        call geo_provisional_head_from_depth (thisColP_NonSurcharged)
 
         ! print *, 'CCC -- 002- fff',elemR(49,er_Volume)
         ! call util_CLprint () 
@@ -138,7 +138,6 @@ module geometry
         !% limit volume for incipient surcharge. This is done after depth is computed
         !% so that the "depth" algorithm can include depths greater than fulldepth
         !% as a way to handle head for incipient surcharge.
-        !call geo_limit_incipient_surcharge (er_Volume, er_FullVolume, thisColP_NonSurcharged)
         call geo_limit_incipient_surcharge (er_Volume, er_FullVolume, thisColP_NonSurcharged,.true.) !% 20220124brh
 
         ! print *, 'CCC -- 002- ggg'
@@ -207,7 +206,6 @@ module geometry
         !% compute hydradius
         call geo_hydradius_from_area_perimeter (thisColP_NonSurcharged)
 
-
         ! print *, 'CCC -- 002- qqq'
         ! call util_CLprint () 
 
@@ -215,6 +213,9 @@ module geometry
         !% for Froude number computations on all elements, whether ETM or AC.
         call geo_ell (thisColP_all)
 
+        !% find the proper head using the modified hydraulic depth
+        call geo_head_from_ell (thisColP_all)
+        
         !% make adjustments for slots on closed elements only for ETM
         if (whichTM .eq. ETM) then
             call geo_slot_adjustments (thisColP_ClosedElems)
@@ -676,21 +677,20 @@ module geometry
 !%==========================================================================
 !%==========================================================================
 !%
-    subroutine geo_head_from_depth (thisColP)
+    subroutine geo_provisional_head_from_depth (thisColP)
         !%-----------------------------------------------------------------------------
         !% Description:
         !% Computes head from depth for non-surcharged elements of CC, JM
         !%-----------------------------------------------------------------------------
         integer, intent(in) :: thisColP
         integer, pointer :: Npack, thisP(:)
-        real(8), pointer :: depth(:), fulldepth(:), head(:), Zbtm(:)
+        real(8), pointer :: depth(:), head(:), Zbtm(:)
 
-        character(64) :: subroutine_name = 'geo_head_from_depth'
+        character(64) :: subroutine_name = 'geo_provisional_head_from_depth'
         !%-----------------------------------------------------------------------------
         if (crashYN) return
         Npack     => npack_elemP(thisColP)
         depth     => elemR(:,er_Depth)
-        fulldepth => elemR(:,er_FullDepth)
         head      => elemR(:,er_Head)
         Zbtm      => elemR(:,er_Zbottom)
         !%-----------------------------------------------------------------------------
@@ -705,7 +705,41 @@ module geometry
 
         if (setting%Debug%File%geometry) &
         write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
-    end subroutine geo_head_from_depth
+    end subroutine geo_provisional_head_from_depth
+!%
+!%==========================================================================
+!
+!%==========================================================================
+!%
+subroutine geo_head_from_ell (thisColP)
+        !%-----------------------------------------------------------------------------
+        !% Description:
+        !% Computes head from depth for non-surcharged elements of CC, JM
+        !%-----------------------------------------------------------------------------
+        integer, intent(in) :: thisColP
+        integer, pointer :: Npack, thisP(:)
+        real(8), pointer :: ell(:), head(:), Zbtm(:)
+
+        character(64) :: subroutine_name = 'geo_head_from_ell'
+        !%-----------------------------------------------------------------------------
+        if (crashYN) return
+        Npack     => npack_elemP(thisColP)
+        ell       => elemR(:,er_ell)
+        head      => elemR(:,er_Head)
+        Zbtm      => elemR(:,er_Zbottom)
+        !%-----------------------------------------------------------------------------
+        !%
+        if (setting%Debug%File%geometry) &
+            write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
+
+        if (Npack > 0) then
+            thisP  => elemP(1:Npack,thisColP)
+            head(thisP) = ell(thisP) + Zbtm(thisP)
+        end if
+ 
+        if (setting%Debug%File%geometry) &
+        write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
+    end subroutine geo_head_from_ell
 !%
 !%==========================================================================
 !
@@ -1054,10 +1088,11 @@ module geometry
         !%-----------------------------------------------------------------------------
         integer, intent(in) :: thisColP
         integer, pointer    :: thisP(:), Npack
-        real(8), pointer    :: SlotWidth(:), SlotVolume(:), SlotDepth(:), SlotArea(:)
-        real(8), pointer    :: volume(:), volumeN0(:), depth(:), area(:), hydRadius(:)
-        real(8), pointer    :: head(:), headN0(:), fullVolume(:), fullArea(:), fullDepth(:)
+        real(8), pointer    :: SlotWidth(:), SlotVolume(:), SlotDepth(:)
+        real(8), pointer    :: volume(:), depth(:), area(:), SlotArea(:)
+        real(8), pointer    :: head(:), fullVolume(:), fullArea(:), fullDepth(:)
         real(8), pointer    :: Overflow(:), zbottom(:), ellMax(:), SlotHydRad(:)
+        logical, pointer    :: isSlot(:)
 
         character(64) :: subroutine_name = 'geo_slot_adjustments'
         !%-----------------------------------------------------------------------------
@@ -1067,35 +1102,31 @@ module geometry
 
         Npack      => npack_elemP(thisColP)
         area       => elemR(:,er_Area)
-        volume     => elemR(:,er_Volume)
-        volumeN0   => elemR(:,er_Volume_N0)
-        Overflow   => elemR(:,er_VolumeOverFlow)
         depth      => elemR(:,er_Depth)
         ellMax     => elemR(:,er_ell_max)
         fullDepth  => elemR(:,er_FullDepth)
         fullvolume => elemR(:,er_FullVolume)
         fullArea   => elemR(:,er_FullArea)
         head       => elemR(:,er_Head)
-        headN0     => elemR(:,er_Head_N0)
-        hydRadius  => elemR(:,er_HydRadius)
-        zbottom    => elemR(:,er_Zbottom)
+        Overflow   => elemR(:,er_VolumeOverFlow)
         SlotWidth  => elemR(:,er_SlotWidth)
         SlotVolume => elemR(:,er_SlotVolume)
         SlotDepth  => elemR(:,er_SlotDepth)
         SlotArea   => elemR(:,er_SlotArea)
         SlotHydRad => elemR(:,er_SlotHydRadius)
-
+        volume     => elemR(:,er_Volume)
+        zbottom    => elemR(:,er_Zbottom)
+        isSlot     => elemYN(:,eYN_isSlot)
         !%-----------------------------------------------------------------------------
 
         if (Npack > 0) then
             thisP    => elemP(1:Npack,thisColP)
 
-            where (SlotVolume(thisP) .gt. zeroR) 
+            where (isSlot(thisP)) 
                 volume(thisP) = volume(thisP)  + SlotVolume(thisP)
                 area(thisP)   = area(thisP)    + SlotArea(thisP)
                 depth(thisP)  = depth(thisP)   + SlotDepth(thisP)
-                head(thisP)   = zbottom(thisP) + fullDepth(thisP) + SlotDepth(thisP)
-                ! hydRadius(thisP) = hydRadius(thisP) + SlotHydRad(thisP)
+                head(thisP)   = head(thisP)    + SlotDepth(thisP)
                 Overflow(thisP) = zeroR
             end where 
         end if

@@ -657,38 +657,18 @@ module face
         fPreissmenSet = [fr_Preissmann_Number]
         ePreissmenSet = [er_Preissmann_Number]
 
-        ! write(*,"(A,4f12.5)") '......ppp ',elemR(ietmp(1),er_Head), &
-        ! faceR(iftmp(1),fr_Head_u), &
-        ! faceR(iftmp(1),fr_Head_d), &
-        ! elemR(ietmp(2),er_Head)
-
-       ! print *, 'EEE--aa'
-       ! call util_CLprint ()   
-
         !% two-sided interpolation to using the upstream face set
         call face_interp_interior_set &
-            (fGeoSetU, eGeoSet, er_InterpWeight_dG, er_InterpWeight_uG, facePackCol, Npack)
-          !  print *, 'EEE--bb'
-          !  call util_CLprint ()   
+            (fGeoSetU, eGeoSet, er_InterpWeight_dG, er_InterpWeight_uG, facePackCol, Npack)  
 
         call face_interp_interior_set &
             (fHeadSetU, eHeadSet, er_InterpWeight_dH, er_InterpWeight_uH, facePackCol, Npack)
 
-            ! print *, 'EEE--cc'
-            ! call util_CLprint ()   
-
         call face_interp_interior_set &
             (fFlowSet, eFlowSet, er_InterpWeight_dQ, er_InterpWeight_uQ, facePackCol, Npack)
+
         call face_interp_interior_set &
             (fPreissmenSet, ePreissmenSet, er_InterpWeight_dP, er_InterpWeight_uP, facePackCol, Npack)
-
-            ! print *, 'EEE--dd'
-            ! call util_CLprint ()       
-
-        ! write(*,"(A,4f12.5)") '......qqq ',elemR(ietmp(1),er_Head), &
-        !     faceR(iftmp(1),fr_Head_u), &
-        !     faceR(iftmp(1),fr_Head_d), &
-        !     elemR(ietmp(2),er_Head)    
 
         ! !% handle faces near lateral inflows for positive (downstream) flows  
         ! where((elemR(:,er_FlowrateLateral) > zeroR) .and. (elemR(:,er_Flowrate) > zeroR))

@@ -176,8 +176,8 @@ module weir_elements
         TriangularSideSlope   => elemSR(eIdx,esr_Weir_TriangularSideSlope)
         TrapezoidalLeftSlope  => elemSR(eIdx,esr_Weir_TrapezoidalLeftSlope)
         TrapezoidalRightSlope => elemSR(eIdx,esr_Weir_TrapezoidalRightSlope)
-        CoeffTriangular       => elemSR(eIdx,esr_Weir_Triangular)
-        CoeffRectangular      => elemSR(eIdx,esr_Weir_Rectangular)
+        CoeffTriangular       => elemSR(eIdx,esr_Weir_TriangularCoeff)
+        CoeffRectangular      => elemSR(eIdx,esr_Weir_RectangularCoeff)
         NominalDsHead         => elemSR(eIdx,esr_Weir_NominalDownstreamHead)
         !%-----------------------------------------------------------------------------
         !% initializing default local Villemonte submergence correction factors as 1

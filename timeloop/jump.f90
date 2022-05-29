@@ -88,7 +88,7 @@ module jump
         integer :: image
         integer, pointer :: faceIdx(:), eup(:), edn(:), thisP(:), jumptype(:)
         integer, pointer :: Npack_jumpUp, Npack_JumpDn, Nfaces
-        logical, pointer :: isSurcharged(:), isInterior(:)
+        logical, pointer :: isSurcharged(:), isSlot(:), isInterior(:)
         real(8), pointer :: feps, Fr(:)
         !%-----------------------------------------------------------------------------
         !%-----------------------------------------------------------------------------
@@ -99,6 +99,7 @@ module jump
         !%-----------------------------------------------------------------------------
         Fr           => elemR(:,er_FroudeNumber)
         isSurcharged => elemYN(:,eYN_isSurcharged)
+        isSlot       => elemYN(:,eYN_isSlot)
         !%-----------------------------------------------------------------------------
         isInterior   => faceYN(1:Nfaces,fYN_isInteriorFace)
         eup          => faceI(1:Nfaces,fi_Melem_uL)
@@ -125,7 +126,11 @@ module jump
             .and. &
             (.not. isSurcharged(eup)) &
             .and. &
-            (.not. isSurcharged(eDn)) )
+            (.not. isSurcharged(eDn)) &
+            .and. &
+            (.not. isSlot(eup)) &
+            .and. &
+            (.not. isSlot(eDn)))
 
         Npack_JumpUp => npack_faceP(fp_JumpUp) 
 
@@ -142,7 +147,11 @@ module jump
                 .and. &
                 (.not. isSurcharged(eup)) &
                 .and. &
-                (.not. isSurcharged(eDn)) )
+                (.not. isSurcharged(eDn)) &
+                .and. &
+                (.not. isSlot(eup)) &
+                .and. &
+                (.not. isSlot(eDn)))
 
             !% pointer to the packed indexes
             thisP => faceP(1:Npack_JumpUp,fp_JumpUp)
@@ -165,7 +174,11 @@ module jump
             .and. &
             (.not. isSurcharged(eup)) &
             .and. &
-            (.not. isSurcharged(eDn)) )
+            (.not. isSurcharged(eDn)) &
+            .and. &
+            (.not. isSlot(eup)) &
+            .and. &
+            (.not. isSlot(eDn)))
 
         !% assign the above count to the npack storage for later use
         Npack_JumpDn => npack_faceP(fp_JumpDn)
@@ -183,7 +196,11 @@ module jump
                 .and. &
                 (.not. isSurcharged(eup)) &
                 .and. &
-                (.not. isSurcharged(eDn)) )
+                (.not. isSurcharged(eDn)) &
+                .and. &
+                (.not. isSlot(eup)) &
+                .and. &
+                (.not. isSlot(eDn)))
             
             !% pointer to thee packed indexes
             thisP => faceP(1:Npack_JumpDn,fp_JumpDn)

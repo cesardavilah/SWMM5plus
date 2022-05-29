@@ -1263,6 +1263,7 @@ module lowlevel_rk2
         real(8), pointer    :: fullVolume(:), length(:), PNumber(:), PCelerity(:), SlotHydRad(:) 
         real(8), pointer    :: SlotWidth(:), SlotVolume(:), SlotDepth(:), SlotArea(:), volume(:)  
         real(8), pointer    :: velocity(:), fPNumber(:), TargetPCelerity, cfl, grav, PreissmannAlpha
+        logical, pointer    :: isSlot(:)
 
         character(64) :: subroutine_name = 'll_slot_computation_ETM'
         !%-----------------------------------------------------------------------------
@@ -1284,6 +1285,8 @@ module lowlevel_rk2
         SlotArea   => elemR(:,er_SlotArea)
         volume     => elemR(:,er_Volume)
         velocity   => elemR(:,er_velocity)
+        !% pointer to elemYN column
+        isSlot     => elemYN(:,eYN_isSlot)
         !% pointers to elemI columns
         fUp        => elemI(:,ei_Mface_uL)
         fDn        => elemI(:,ei_Mface_dL)
@@ -1299,27 +1302,38 @@ module lowlevel_rk2
         select case (SlotMethod)
 
         case (StaticSlot)
+            !% initialize slot
+            SlotDepth(thisP)  = zeroR
+            SlotWidth(thisP)  = zeroR
+            PCelerity(thisP)  = zeroR
+            SlotVolume(thisP) = zeroR
+            SlotArea(thisP)   = zeroR
+            isSlot(thisP)     = .false.
+
+            !% find the slot volume and area
             SlotVolume(thisP) = max(volume(thisP) - fullvolume(thisP), zeroR)
-            !% SWMM5 uses 1% of width max as slot width
-            ! SlotWidth(thisP)  = 0.01 * BreadthMax(thisP)
-            !% HACK: modeling for acoustic wavespeed
-            SlotWidth(thisP) = (grav * fullArea(thisP)) / (TargetPCelerity**2.0)
-            !% HACK: old code based on a target CFL
-            ! SlotWidth(thisP)  = (grav*fullArea(thisP)*tDelta**twoR)/&
-                ! (cfl*length(thisP))**twoR
-            SlotArea(thisP)   = SlotVolume(thisP) / length(thisP)
-            SlotDepth(thisP)  = SlotArea(thisP) / SlotWidth(thisP)
-        
+            SlotArea(thisP)   = max(SlotVolume(thisP) / length(thisP), zeroR)
+
+            where (SlotArea(thisP) .gt. zeroR)
+                SlotWidth(thisP) = (grav * fullArea(thisP)) / (TargetPCelerity**2.0)
+                SlotDepth(thisP)  = SlotArea(thisP) / SlotWidth(thisP)
+                PCelerity(thisP)  = sqrt(grav * fullarea(thisP) / SlotWidth(thisP))
+                isSlot(thisP)     = .true.
+            end where
+
         case (DynamicSlot)
+            !% initialize slot
             SlotVolume(thisP) = max(volume(thisP) - fullvolume(thisP), zeroR)
             SlotArea(thisP)   = max(SlotVolume(thisP) / length(thisP), zeroR)
             SlotDepth(thisP)  = zeroR
             SlotWidth(thisP)  = zeroR
             PCelerity(thisP)  = zeroR
+            isSlot(thisP)     = .false.
 
             !% find incipient surcharge  and non-surcharged elements reset the preissmann number
             where ((SlotArea(thisP) .le. zeroR) .or. (AreaN0(thisP) .le. fullArea(thisP)))
                 PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
+                PCelerity(thisP) = TargetPCelerity / PNumber(thisP)
             end where
 
             !% Slot calculations
@@ -1332,11 +1346,11 @@ module lowlevel_rk2
                 SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
                 !% find the width of the slot
                 SlotWidth(thisP)  = SlotArea(thisP) / SlotDepth(thisP) 
-                !% find the hydraulic radius of the slot
-                SlotHydRad(thisP) = (SlotDepth(thisP) * SlotWidth(thisP)) / (twoR * SlotDepth(thisP) + SlotWidth(thisP))
                 !% get a new increased preissmann number for the next time step
                 ! PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
-                PNumber(thisP) = max(PNumber(thisP)**0.8 - log(PNumber(thisP)),1.0)
+                PNumber(thisP) = PNumber(thisP) ** oneR - log(PNumber(thisP))
+                !% set the slot boolean as true
+                isSlot(thisP)  = .true.
             end where
 
         case default
@@ -1347,14 +1361,7 @@ module lowlevel_rk2
             stop 38756
 
         end select
-        ! if (util_output_must_report()) then
-        !     print*, ellMax(thisP), 'ellMax(thisP)'
-        !     print*
-        !     print*, SlotArea(thisP), 'SlotArea(thisP)'
-        !     print*
-        !     print*, SlotDepth(thisP) , 'SlotDepth(thisP) '
-        !     print*
-        ! end if
+
     end subroutine ll_slot_computation_ETM
 !%
 !%==========================================================================

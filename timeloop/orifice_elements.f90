@@ -189,10 +189,10 @@ module orifice_elements
         integer, pointer :: SpecificOrificeType, FlowDirection, GeometryType
         real(8), pointer :: Flowrate, EffectiveHeadDelta, Zcrest, Head, grav, dt
         real(8), pointer :: RectangularBreadth, NominalDownstreamHead, FullDepth
-        real(8), pointer :: DischargeCoeff, EffectiveFullDepth, FullArea
+        real(8), pointer :: DischargeCoeff, EffectiveFullDepth, EffectiveFullArea, FullArea
         real(8), pointer :: WeirExponent, VillemonteExponent, SharpCrestedWeirCoeff
         real(8) :: CriticalDepth, AoverL, FractionCritDepth, Coef
-        real(8) :: ratio
+        real(8) :: ratio, YoverYfull
 
         character(64) :: subroutine_name = 'orifice_flow'
         !%-----------------------------------------------------------------------------
@@ -211,6 +211,7 @@ module orifice_elements
         RectangularBreadth    => elemSR(eIdx,esr_Orifice_RectangularBreadth)
         DischargeCoeff        => elemSR(eIdx,esr_Orifice_DischargeCoeff)
         EffectiveFullDepth    => elemSR(eIdx,esr_Orifice_EffectiveFullDepth)
+        EffectiveFullArea     => elemSR(eIdx,esr_Orifice_EffectiveFullArea)
         NominalDownstreamHead => elemSR(eIdx,esr_Orifice_NominalDownstreamHead)
         FullDepth             => elemR(eIdx,er_FullDepth)
         SharpCrestedWeirCoeff => Setting%Orifice%SharpCrestedWeirCoefficient
@@ -222,11 +223,12 @@ module orifice_elements
         !% find full area for flow, and A/L for critical depth calculations
         select case (GeometryType)
             case (circular)
-                fullArea = pi * (onehalfR * EffectiveFullDepth) ** twoR
-                AoverL   = onefourthR * EffectiveFullDepth
+                YoverYfull        = EffectiveFullDepth / FullDepth
+                EffectiveFullArea = FullArea * xsect_table_lookup_singular (YoverYfull, ACirc, NACirc)
+                AoverL            = onefourthR * EffectiveFullDepth
             case (rectangular_closed)
-                FullArea = EffectiveFullDepth * RectangularBreadth
-                AoverL   = FullArea / (twoR * (EffectiveFullDepth + RectangularBreadth))
+                EffectiveFullArea = EffectiveFullDepth * RectangularBreadth
+                AoverL            = EffectiveFullArea / (twoR * (EffectiveFullDepth + RectangularBreadth))
             case default
                 print *, 'element idx = ',eIdx
                 print *, 'SpecificOrificeType = ',SpecificOrificeType, ' ',reverseKey(SpecificOrificeType)
@@ -264,11 +266,11 @@ module orifice_elements
         elseif (FractionCritDepth < oneR) then
             !% case where inlet depth is below critical depth thus,
             !% orifice behaves as a rectangular transverse weir
-            Coef     = DischargeCoeff * FullArea * sqrt(twoR * grav * CriticalDepth)
+            Coef     = DischargeCoeff * EffectiveFullArea * sqrt(twoR * grav * CriticalDepth)
             Flowrate = FlowDirection * Coef * (FractionCritDepth ** WeirExponent)
         else
             !% standard orifice flow condition
-            Coef      = DischargeCoeff * FullArea * sqrt(twoR * grav)
+            Coef      = DischargeCoeff * EffectiveFullArea * sqrt(twoR * grav)
             Flowrate  = FlowDirection * Coef * sqrt(EffectiveHeadDelta)
         end if
 

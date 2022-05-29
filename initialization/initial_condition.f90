@@ -641,8 +641,8 @@ contains
                     elemR(:,er_FullArea)     = elemSGR(:,esgr_Rectangular_Breadth) * elemR(:,er_FullDepth)
                     elemR(:,er_FullVolume)   = elemR(:,er_FullArea) * elemR(:,er_Length)
                     elemR(:,er_AreaBelowBreadthMax)   = elemR(:,er_FullArea)!% 20220124brh
-                    elemR(:,er_ell_max)      = (elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
-                                            elemR(:,er_AreaBelowBreadthMax) / elemR(:,er_BreadthMax) 
+                    elemR(:,er_ell_max)      = ((elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
+                                            elemR(:,er_AreaBelowBreadthMax)) / elemR(:,er_BreadthMax) 
                 endwhere
 
             case (lTrapezoidal)
@@ -680,8 +680,8 @@ contains
                                 elemR(:,er_FullDepth)) * elemR(:,er_FullDepth)
                     elemR(:,er_FullVolume)   = elemR(:,er_FullArea) * elemR(:,er_Length)
                     elemR(:,er_AreaBelowBreadthMax)   = elemR(:,er_FullArea)!% 20220124brh
-                    elemR(:,er_ell_max)      = (elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
-                                        elemR(:,er_AreaBelowBreadthMax) / elemR(:,er_BreadthMax) 
+                    elemR(:,er_ell_max)      = ((elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
+                                        elemR(:,er_AreaBelowBreadthMax)) / elemR(:,er_BreadthMax) 
                     elemR(:,er_FullHydDepth) = elemR(:,er_FullArea) / elemR(:,er_BreadthMax) !% 20220406brh
                     elemR(:,er_FullPerimeter) = elemSGR(:,esgr_Trapezoidal_Breadth)   &
                         + elemR(:,er_FullDepth)                                       &
@@ -711,8 +711,8 @@ contains
                     elemR(:,er_FullArea)     = elemR(:,er_FullDepth) * elemR(:, er_FullDepth) * elemSGR(:,esgr_Triangular_Slope) 
                     elemR(:,er_FullVolume)   = elemR(:,er_FullArea) * elemR(:,er_Length)
                     elemR(:,er_AreaBelowBreadthMax)   = elemR(:,er_FullArea)!% 20220124brh
-                    elemR(:,er_ell_max)      = (elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
-                                        elemR(:,er_AreaBelowBreadthMax) / elemR(:,er_BreadthMax) 
+                    elemR(:,er_ell_max)      = ((elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
+                                        elemR(:,er_AreaBelowBreadthMax)) / elemR(:,er_BreadthMax) 
                     elemR(:,er_FullHydDepth)  = elemR(:,er_FullArea) / elemR(:,er_BreadthMax) 
                     elemR(:,er_FullPerimeter) = twoR * sqrt(((elemSGR(:,esgr_Triangular_TopBreadth) ** twoR) / fourR) +  &
                                                 (elemR(:,er_FullDepth) ** twoR))
@@ -778,8 +778,8 @@ contains
                 elemR(:,er_FullArea)              = elemSGR(:,esgr_Rectangular_Breadth) * elemR(:,er_FullDepth)
                 elemR(:,er_FullVolume)            = elemR(:,er_FullArea) * elemR(:,er_Length)
                 elemR(:,er_AreaBelowBreadthMax)   = elemR(:,er_FullArea)
-                elemR(:,er_ell_max)               = (elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
-                                                    elemR(:,er_AreaBelowBreadthMax) / elemR(:,er_BreadthMax)  
+                elemR(:,er_ell_max)               = ((elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
+                                                    elemR(:,er_AreaBelowBreadthMax)) / elemR(:,er_BreadthMax)  
                 elemR(:,er_FullHydDepth)          = elemR(:,er_FullDepth) 
                 elemR(:,er_FullPerimeter)         = twoR * elemR(:,er_FullDepth) + elemSGR(:,esgr_Rectangular_Breadth)
             endwhere
@@ -809,8 +809,8 @@ contains
                 elemR(:,er_Volume)                = elemR(:,er_Area) * elemR(:,er_Length)
                 elemR(:,er_Volume_N0)             = elemR(:,er_Volume)
                 elemR(:,er_Volume_N1)             = elemR(:,er_Volume)
-                elemR(:,er_ell_max)               = (elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
-                                                    elemR(:,er_AreaBelowBreadthMax) / elemR(:,er_BreadthMax) 
+                elemR(:,er_ell_max)               = ((elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
+                                                    elemR(:,er_AreaBelowBreadthMax)) / elemR(:,er_BreadthMax) 
             end where
 
         case default
@@ -859,13 +859,16 @@ contains
                     !% real data
                     elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_EffectiveFullDepth)    = link%R(thisLink,lr_FullDepth)
-                    elemSR(:,esr_Weir_Rectangular)           = link%R(thisLink,lr_DischargeCoeff1)
-                    elemSR(:,esr_Weir_Triangular)            = link%R(thisLink,lr_DischargeCoeff2)
+                    elemSR(:,esr_Weir_RectangularCoeff)      = link%R(thisLink,lr_DischargeCoeff1)
+                    elemSR(:,esr_Weir_TriangularCoeff)       = link%R(thisLink,lr_DischargeCoeff2)
                     elemSR(:,esr_Weir_TrapezoidalBreadth)    = link%R(thisLink,lr_BreadthScale)
                     elemSR(:,esr_Weir_TrapezoidalLeftSlope)  = link%R(thisLink,lr_SideSlope)
                     elemSR(:,esr_Weir_TrapezoidalRightSlope) = link%R(thisLink,lr_SideSlope)
                     elemSR(:,esr_Weir_Zcrest)                = elemR(:,er_Zbottom) + link%R(thisLink,lr_InletOffset)
                     elemSR(:,esr_Weir_Zcrown)                = elemSR(:,esr_Weir_Zcrest) + link%R(thisLink,lr_FullDepth)
+                    elemR(:,er_FullArea)                     = (elemSR(:,esr_Weir_TrapezoidalBreadth) + onehalfR * &
+                                                                (elemSR(:,esr_Weir_TrapezoidalLeftSlope) + elemSR(:,esr_Weir_TrapezoidalRightSlope)) * &
+                                                                elemR(:,er_FullDepth)) * elemR(:,er_FullDepth)
                 endwhere
 
             case (lSideFlowWeir)
@@ -877,10 +880,11 @@ contains
                     !% real data
                     elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_EffectiveFullDepth)    = link%R(thisLink,lr_FullDepth)
-                    elemSR(:,esr_Weir_Rectangular)           = link%R(thisLink,lr_DischargeCoeff1)
+                    elemSR(:,esr_Weir_RectangularCoeff)      = link%R(thisLink,lr_DischargeCoeff1)
                     elemSR(:,esr_Weir_RectangularBreadth)    = link%R(thisLink,lr_BreadthScale)
                     elemSR(:,esr_Weir_Zcrest)                = elemR(:,er_Zbottom) + link%R(thisLink,lr_InletOffset)
                     elemSR(:,esr_Weir_Zcrown)                = elemSR(:,esr_Weir_Zcrest) + link%R(thisLink,lr_FullDepth)
+                    elemR(:,er_FullArea)                     = elemSR(:,esr_Weir_RectangularBreadth) * elemR(:,er_FullDepth)
                 endwhere
 
             case (lRoadWayWeir)
@@ -900,10 +904,12 @@ contains
                     !% real data
                     elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_EffectiveFullDepth)    = link%R(thisLink,lr_FullDepth)
-                    elemSR(:,esr_Weir_Triangular)            = link%R(thisLink,lr_DischargeCoeff1)
+                    elemSR(:,esr_Weir_TriangularCoeff)       = link%R(thisLink,lr_DischargeCoeff1)
                     elemSR(:,esr_Weir_TriangularSideSlope)   = link%R(thisLink,lr_SideSlope)
                     elemSR(:,esr_Weir_Zcrest)                = elemR(:,er_Zbottom) + link%R(thisLink,lr_InletOffset)
                     elemSR(:,esr_Weir_Zcrown)                = elemSR(:,esr_Weir_Zcrest) + link%R(thisLink,lr_FullDepth)
+                    elemR(:,er_FullArea)                     = elemR(:,er_FullDepth) * elemR(:, er_FullDepth) * &
+                                                                elemSR(:,esr_Weir_TriangularSideSlope) 
                 endwhere
 
             case (lTransverseWeir)
@@ -915,10 +921,11 @@ contains
                     !% real data
                     elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
                     elemSR(:,esr_Weir_EffectiveFullDepth)    = link%R(thisLink,lr_FullDepth)
-                    elemSR(:,esr_Weir_Rectangular)           = link%R(thisLink,lr_DischargeCoeff1)
+                    elemSR(:,esr_Weir_RectangularCoeff)      = link%R(thisLink,lr_DischargeCoeff1)
                     elemSR(:,esr_Weir_RectangularBreadth)    = link%R(thisLink,lr_BreadthScale)
                     elemSR(:,esr_Weir_Zcrest)                = elemR(:,er_Zbottom)  + link%R(thisLink,lr_InletOffset)
                     elemSR(:,esr_Weir_Zcrown)                = elemSR(:,esr_Weir_Zcrest) + link%R(thisLink,lr_FullDepth)
+                    elemR(:,er_FullArea)                     = elemSR(:,esr_Weir_RectangularBreadth) * elemR(:,er_FullDepth)
                 endwhere
 
             case default
@@ -997,6 +1004,7 @@ contains
                 elemSR(:,esr_Orifice_Zcrest)             = elemR(:,er_Zbottom) + link%R(thisLink,lr_InletOffset)
                 elemSR(:,esr_Orifice_Zcrown)             = elemSR(:,eSr_Orifice_Zcrest) + link%R(thisLink,lr_FullDepth)
                 elemSR(:,esr_Orifice_RectangularBreadth) = link%R(thisLink,lr_BreadthScale)
+                elemR(:,er_FullArea)                     = elemSR(:,esr_Orifice_RectangularBreadth) * elemR(:,er_FullDepth)
             end where
 
         case (lCircular)
@@ -1005,6 +1013,7 @@ contains
                 elemI(:,ei_geometryType)    = circular
                 !% real data
                 elemR(:,er_FullDepth)                    = link%R(thisLink,lr_FullDepth)
+                elemR(:,er_FullArea)                     = (pi / fourR) * elemR(:,er_FullDepth)  ** twoR
                 elemSR(:,esr_Orifice_EffectiveFullDepth) = link%R(thisLink,lr_FullDepth)
                 elemSR(:,esr_Orifice_DischargeCoeff)     = link%R(thisLink,lr_DischargeCoeff1)
                 elemSR(:,esr_Orifice_Orate)              = link%R(thisLink,lr_DischargeCoeff2)
@@ -1681,11 +1690,11 @@ contains
         where ( (elemI(:,ei_QeqType) == diagnostic) .or. (elemI(:,ei_HeqType) == diagnostic))
             !% HACK: settings%ZeroValues should be used here
             !% when the code is finalized
-            elemR(:,er_Area)     = 1.0e-6
-            elemR(:,er_Topwidth) = 1.0e-6
-            elemR(:,er_HydDepth) = 1.0e-6
-            elemR(:,er_Flowrate) = 1.0e-6
-            elemR(:,er_Head)     = 1.0e-6
+            elemR(:,er_Area)     = 1.0e-16
+            elemR(:,er_Topwidth) = 1.0e-16
+            elemR(:,er_HydDepth) = 1.0e-16
+            elemR(:,er_Flowrate) = 1.0e-16
+            elemR(:,er_Head)     = 1.0e-16
         endwhere
 
         if (setting%Debug%File%initial_condition) &
