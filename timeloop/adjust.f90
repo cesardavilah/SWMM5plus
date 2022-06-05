@@ -1054,7 +1054,11 @@ module adjust
             faceHeadDn => faceR(:,fr_Head_d)          
             elemHead   => elemR(:,er_Head)    
             elemCrown  => elemR(:,er_Zcrown)
+<<<<<<< HEAD
             elemEllMax => elemR(:,er_ell_max)
+=======
+            elemEllMax => elemR(:,er_FullDepth)
+>>>>>>> 96cf69e6a9c5c2a94cfe2126b7542362609eace0
             w_uH       => elemR(:,er_InterpWeight_uH)
             w_dH       => elemR(:,er_InterpWeight_dH)
             Vvalue     => elemR(:,er_Temp01)
@@ -1062,12 +1066,22 @@ module adjust
             multiplier => setting%Adjust%Head%FullDepthMultiplier
 
         !%-------------------------------------------------------------------
+<<<<<<< HEAD
         !% find the cells that are surcharged
         Vvalue(thisP) = elemHead(thisP) - elemCrown(thisP)
         where (Vvalue(thisP) > zeroR)
             Vvalue(thisP) = oneR
         elsewhere
             Vvalue(thisP) = zeroR 
+=======
+        !% find the cells that are deep enough to use the V filter
+        !% The surcharge head must be larger than some multiple of the conduit full depth
+        Vvalue(thisP) = (elemHead(thisP) - elemCrown(thisP))  / (multiplier * elemEllMax(thisP))
+        where (Vvalue(thisP) > oneR)
+            Vvalue(thisP) = oneR
+        elsewhere
+            Vvalue(thisP) = zeroR !% HACK: to apply v shape head correction for all cases
+>>>>>>> 96cf69e6a9c5c2a94cfe2126b7542362609eace0
         endwhere
 
         !% identify the V-shape locations
