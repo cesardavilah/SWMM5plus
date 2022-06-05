@@ -394,7 +394,7 @@ module runge_kutta2
             thisPackCol => col_elemP(ep_Closed_Elements)
             Npack => npack_elemP(thisPackCol)
             if (Npack > 0) then
-                call ll_slot_computation_ETM (thisPackCol, Npack)
+                call ll_slot_computation_ETM (thisPackCol, Npack, istep)
             end if
         endif
 

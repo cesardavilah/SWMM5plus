@@ -917,31 +917,13 @@ contains
         !print *, size(thisP), Npack
 
         if (Npack > 0) then 
-            outvalue = max (maxval((abs(velocity(thisP)) + abs(wavespeed(thisP))) * thisDT / length(thisP)), &
-                            maxval((abs(velocity(thisP)) + abs(PCelerity(thisP))) * thisDT / length(thisP)))
+            outvalue = max(maxval((abs(velocity(thisP)) + abs(wavespeed(thisP))) * thisDT / length(thisP)), &
+                           maxval((abs(velocity(thisP)) + abs(PCelerity(thisP))) * thisDT / length(thisP)))
         else
             outvalue = zeroR
         end if
 
-        ! print * , ' '
-        ! print *, velocity(thisP)
-        ! print *, ' '
-        ! print *, wavespeed(thisP)
-        ! print *, ' '
-        ! print *, elemR(thisP,er_Area)
-        ! print *, ' '
-        ! print *, elemR(thisP,er_Head)
-        ! print *, ' '
-        ! print *, elemR(thisP,er_WaveSpeed)
-        ! print *, ' '
-        ! print *, elemR(thisP,er_Preissmann_Celerity)
-        ! print *, ' '
-        ! print *, outvalue
-        ! print *, thisDT
-        ! print *, 'exiting tl_get_max_cfl'
-        ! !stop 39875
-
-    end function tl_get_max_cfl    
+    end function tl_get_max_cfl   
 !%
 !%==========================================================================
 !%==========================================================================

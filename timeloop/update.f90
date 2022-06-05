@@ -294,47 +294,14 @@ module update
                 thisP2 => elemP(1:Npack2,thisCol_AC)
                 wavespeed(thisP2) = wavespeed(thisP2) * setting%ACmethod%Celerity%RC
             end if
-        ! else if (whichTM .eq. ETM) then
-        !     Npack2 => npack_elemP(thisCol_ClosedElems)
-        !     if (Npack2 > 0) then
-        !         thisP2 => elemP(1:Npack2,thisCol_ClosedElems)
-        !         !% initialize preissmann slot celerity
-        !         PCelerity(thisP2) = zeroR
-        !         where (SlotVolume(thisP2) .gt. zeroR) 
-        !             PCelerity(thisP2) = sqrt(grav * FullArea(thisP2)/SlotWidth(thisP2)) 
-        !             ! PCelerity(thisP2) = sqrt(grav * Area(thisP2)/SlotWidth(thisP2))        
-        !         end where
-        !     end if
         end if
-
-
-        !% timescale interpolation weights for flowrate
-        !% Modified from original approach by Froude number weighting
-        !% Note that Fr is +/- depending on flow direction, so if the Fr is an odd power
-        !% it needs to have an abs() e.g, abs(Fr(thisp)**3) *
-        ! w_uQ(thisP) = - onehalfR * length(thisP)  / ( abs(Fr(thisp)**10) * velocity(thisP) - wavespeed(thisP)) !BRHbugfix 20210813 testing Fr
-        ! w_dQ(thisP) = + onehalfR * length(thisP)  / ( abs(Fr(thisp)**10) * velocity(thisP) + wavespeed(thisP)) !BRHbugfix 20210813 testing Fr
-
-        ! w_uQ(thisP) = - onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) - wavespeed(thisP) &
-        !         - PCelerity(thisP)) !bugfix SAZ 09212021 
-        ! w_dQ(thisP) = + onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) + wavespeed(thisP) &
-        !         + PCelerity(thisP)) !bugfix SAZ 09212021 
-
-        !% brh 20220104 -- for now, leave the structure of the froude number weighting, but make irrelevant with 0 power
-        ! where (PCelerity(thisP) .le. zeroR)
-        !     w_uQ(thisP) = - onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) - wavespeed(thisP)) !bugfix SAZ 09212021 
-        !     w_dQ(thisP) = + onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) + wavespeed(thisP)) !bugfix SAZ 09212021 
-        ! elsewhere (PCelerity(thisP) .gt. zeroR)
-        !     w_uQ(thisP) = - onehalfR * length(thisP)  / (- PCelerity(thisP)) !bugfix SAZ 23022022 
-        !     w_dQ(thisP) = + onehalfR * length(thisP)  / (+ PCelerity(thisP)) !bugfix SAZ 23022022 
-        ! end where
 
         where (.not. isSlot(thisP))
             w_uQ(thisP) = - onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) - wavespeed(thisP)) !bugfix SAZ 09212021 
             w_dQ(thisP) = + onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) + wavespeed(thisP)) !bugfix SAZ 09212021 
         elsewhere (isSlot(thisP))
-            w_uQ(thisP) = - onehalfR * length(thisP)  / (- PCelerity(thisP)) !bugfix SAZ 23022022 
-            w_dQ(thisP) = + onehalfR * length(thisP)  / (+ PCelerity(thisP)) !bugfix SAZ 23022022 
+            w_uQ(thisP) = - onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) - PCelerity(thisP)) !bugfix SAZ 23022022 
+            w_dQ(thisP) = + onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) + PCelerity(thisP)) !bugfix SAZ 23022022 
         end where
 
         !% apply limiters to timescales

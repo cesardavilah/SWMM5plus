@@ -67,7 +67,7 @@
             "provideYN" : true,
             "suppress_MultiLevel_Output" : false,
             "StartTime" : 110.0,
-            "TimeInterval" : 0.1,
+            "TimeInterval" : 0.5,
             "TimeUnits" : "Seconds"
         }
     },
@@ -96,8 +96,8 @@
     },
     "PreissmannSlot" : {
         "PreissmannSlotMethod" : "DynamicSlot",
-        "TargetPreissmannCelerity" : 13.85,
-        "PreissmannAlpha" : 2.0
+        "TargetPreissmannCelerity" : 25.00,
+        "PreissmannAlpha" : 3.0
     },
     "VariableDT" : {
         "ApplyYN" : true,
@@ -119,7 +119,7 @@
             "SmallDepthMultiplier" : 3.0
         },
         "Head" : {
-            "ApplyYN" : true,
+            "ApplyYN" : false,
             "Approach" : "vshape_surcharge_only",
             "Coef" : 1.0
         }
@@ -146,5 +146,14 @@
                 0.15
             ]
         ]
+    },
+    "Solver" : {
+        "PreissmannSlot" : true,
+        "SubtractReferenceHead" : false,
+        "MomentumSourceMethod" : "T20",
+        "SolverSelect" : "ETM",
+        "SwitchFractionDn" : 0.8,
+        "SwitchFractionUp" : 0.9,
+        "ReferenceHead"     : 0.0
     }
 }

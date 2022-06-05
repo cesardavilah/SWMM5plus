@@ -1012,7 +1012,7 @@ module adjust
             integer, pointer :: thisCol, Npack
             integer, pointer :: thisP(:), mapUp(:), mapDn(:)
             real(8), pointer :: coef, multiplier, smallDepth
-            real(8), pointer :: elemCrown(:), Vvalue(:), elemFullD(:)
+            real(8), pointer :: elemCrown(:), Vvalue(:), elemEllMax(:)
             real(8), pointer :: faceHeadUp(:), faceHeadDn(:), elemHead(:), elemVel(:)
             real(8), pointer :: w_uH(:), w_dH(:)
             character(64) :: subroutine_name = 'adjust_Vshaped_head_surcharged'
@@ -1054,7 +1054,7 @@ module adjust
             faceHeadDn => faceR(:,fr_Head_d)          
             elemHead   => elemR(:,er_Head)    
             elemCrown  => elemR(:,er_Zcrown)
-            elemFullD  => elemR(:,er_FullDepth)
+            elemEllMax => elemR(:,er_ell_max)
             w_uH       => elemR(:,er_InterpWeight_uH)
             w_dH       => elemR(:,er_InterpWeight_dH)
             Vvalue     => elemR(:,er_Temp01)
@@ -1062,13 +1062,12 @@ module adjust
             multiplier => setting%Adjust%Head%FullDepthMultiplier
 
         !%-------------------------------------------------------------------
-        !% find the cells that are deep enough to use the V filter
-        !% The surcharge head must be larger than some multiple of the conduit full depth
-        Vvalue(thisP) = (elemHead(thisP) - elemCrown(thisP))  / (multiplier * elemFullD(thisP))
-        where (Vvalue(thisP) > oneR)
+        !% find the cells that are surcharged
+        Vvalue(thisP) = elemHead(thisP) - elemCrown(thisP)
+        where (Vvalue(thisP) > zeroR)
             Vvalue(thisP) = oneR
         elsewhere
-            Vvalue(thisP) = oneR !% HACK: to apply v shape head correction for all cases
+            Vvalue(thisP) = zeroR 
         endwhere
 
         !% identify the V-shape locations
@@ -1077,15 +1076,7 @@ module adjust
                         * Vvalue(thisP)   
                 
         !% adjust where needed
-        where (Vvalue(thisP) > zeroR)   
-            !% averaging based on interpolation weights
-            ! elemHead(thisP) =  (oneR - coef) * elemHead(thisP)  &
-            !     + coef *                                        &
-            !     (  w_uH(thisP) * faceHeadUp(mapDn(thisP))       &
-            !      + w_dH(thisP) * faceHeadDn(mapUp(thisP))       &
-            !      )                                              &
-            !     / ( w_uH(thisP) + w_dH(thisP) )   
-                
+        where (Vvalue(thisP) > zeroR)    
             !% simple linear interpolation
             elemHead(thisP)  =  (oneR - coef) * elemHead(thisP) &
                 + coef * onehalfR * (faceHeadUp(mapDn(thisP)) + faceHeadDn(mapUp(thisP)))
