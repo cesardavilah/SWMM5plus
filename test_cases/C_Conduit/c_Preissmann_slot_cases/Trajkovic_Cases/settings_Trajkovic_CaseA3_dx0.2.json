@@ -67,7 +67,7 @@
             "provideYN" : true,
             "suppress_MultiLevel_Output" : false,
             "StartTime" : 110.0,
-            "TimeInterval" : 0.5,
+            "TimeInterval" : 0.1,
             "TimeUnits" : "Seconds"
         }
     },
@@ -96,8 +96,8 @@
     },
     "PreissmannSlot" : {
         "PreissmannSlotMethod" : "DynamicSlot",
-        "TargetPreissmannCelerity" : 25.00,
-        "PreissmannAlpha" : 3.0
+        "TargetPreissmannCelerity" : 20.00,
+        "PreissmannAlpha" : 2.0
     },
     "VariableDT" : {
         "ApplyYN" : true,
@@ -119,7 +119,7 @@
             "SmallDepthMultiplier" : 1.0
         },
         "Head" : {
-            "ApplyYN" : true,
+            "ApplyYN" : false,
             "Approach" : "vshape_surcharge_only",
             "Coef" : 1.0,
             "FullDepthMultiplier" : 0.00001

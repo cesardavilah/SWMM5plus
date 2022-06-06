@@ -281,11 +281,6 @@ module update
 
         !% wavespeed at modified hydraulic depth (ell)
         wavespeed(thisP) = sqrt(grav * depth(thisP))
-        ! PCelerity(thisP) = zeroR !% initialize to zero
-
-        ! if (setting%Time%Now/3600.0 > 388.0) then
-        !     print *, 'in ',trim(subroutine_name), wavespeed(ietU1(2))
-        ! end if
     
         !% modify wavespeed for surcharged AC cells
         if (whichTM .ne. ETM) then

@@ -158,8 +158,11 @@ module runge_kutta2
         ! print *, 'QQQ'
         ! call util_CLprint ()
 
+        !% --- update preissmann number for the next time-step
+        call rk2_update_preissmann_number(ETM)
+
         !% --- accumulate the volume overflow
-        elemR(:,er_VolumeOverFlowTotal) = elemR(:,er_VolumeOverFlowTotal) + elemR(:,er_VolumeOverFlow)
+        elemR(:,er_VolumeOverFlowTotal) = elemR(:,er_VolumeOverFlowTotal) + elemR(:,er_VolumeOverFlow) 
 
         ! print *, 'ZZZ'
         ! call util_CLprint ()
@@ -729,6 +732,72 @@ module runge_kutta2
         !% Closing
         !%
     end subroutine rk2_store_conservative_fluxes
+!%   
+!%==========================================================================
+!%==========================================================================
+!%
+    subroutine rk2_update_preissmann_number (whichTM)
+        !%-----------------------------------------------------------------------------
+        !% Description:
+        !% Update the preissmann number at the end of an RK step
+        !%-----------------------------------------------------------------------------
+        integer, intent(in) :: whichTM
+        integer, pointer    :: thisCol, Npack, thisP(:), SlotMethod, fUp(:), fDn(:)
+        real(8), pointer    :: PNumber(:), fPNumber(:)
+
+        character(64) :: subroutine_name = 'rk2_update_preissmann_number'
+        !%-----------------------------------------------------------------------------
+        !% Preliminaries:
+            select case (whichTM)
+            case (ETM)
+                thisCol  => col_elemP(ep_Closed_Elements) 
+            case default
+                print *, 'CODE ERROR: time march type unknown for # ', whichTM
+                print *, 'which has key ',trim(reverseKey(whichTM))
+                stop 8976231
+            end select
+        !%------------------------------------------------------------------
+        !% Aliases: 
+            Npack => npack_elemP(thisCol)
+            !% pointers to elemR columns
+            PNumber    => elemR(:,er_Preissmann_Number)
+            !% pointers to elemI columns
+            fUp        => elemI(:,ei_Mface_uL)
+            fDn        => elemI(:,ei_Mface_dL)
+            !% pointer to faceR column
+            fPNumber   => faceR(:,fr_Preissmann_Number)
+            !% pointer to necessary settings struct
+            SlotMethod => setting%PreissmannSlot%PreissmannSlotMethod
+
+            select case (SlotMethod)
+
+            case (StaticSlot)
+
+            case (DynamicSlot)
+
+                if (Npack > 0) then
+                    !% pointer packed element indexes
+                    thisP => elemP(1:Npack,thisCol)
+                    !% get a new decreased preissmann number for the next time step
+                    PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
+                    ! PNumber(thisP) = PNumber(thisP) ** 0.95 - log(PNumber(thisP))
+                    !% update all faces
+                    call face_interpolation(fp_all,dummy)
+                    !% update the preissmann number from using simple face interpolation
+                    PNumber(thisP) = max(onehalfR * (fPNumber(fUp(thisP)) + fPNumber(fDn(thisP))), oneR)
+                    ! PNumber(thisP) = max(PNumber(thisP)**0.95 - log(PNumber(thisP)), oneR)
+                end if
+
+            case default
+                !% should not reach this stage
+                print*, 'In ', subroutine_name
+                print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
+                print *, 'which has key ',trim(reverseKey(SlotMethod))
+                stop 38756
+
+            end select
+
+    end subroutine rk2_update_preissmann_number
 !%   
 !%==========================================================================
 !%==========================================================================

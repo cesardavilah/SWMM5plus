@@ -1330,9 +1330,6 @@ module lowlevel_rk2
             PCelerity(thisP)  = zeroR
             isSlot(thisP)     = .false.
 
-            !% update the preissmann number from using simple face interpolation
-            PNumber(thisP) =  onehalfR * (fPNumber(fUp(thisP)) + fPNumber(fDn(thisP)))
-
             !% find incipient surcharge  and non-surcharged elements reset the preissmann number and celerity
             where ((SlotArea(thisP) .le. zeroR) .or. (AreaN0(thisP) .le. fullArea(thisP)))
                 PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
@@ -1341,10 +1338,6 @@ module lowlevel_rk2
 
             !% testing: consolidate later
             where (SlotArea(thisP) .gt. zeroR)
-                !% calculate the volume in slot
-                SlotVolume(thisP) = volume(thisP) - fullvolume(thisP)
-                !% calculate the slot area
-                SlotArea(thisP)   = SlotVolume(thisP) / length(thisP)
                 !% set the slot boolean as true
                 isSlot(thisP)  = .true.
                 !% update the preissmann celerity here
@@ -1353,40 +1346,21 @@ module lowlevel_rk2
                 SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
                 !% find the width of the slot
                 SlotWidth(thisP)  = SlotArea(thisP) / SlotDepth(thisP) 
-                !% get a new decreased preissmann number for the next time step
-                ! PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
-                PNumber(thisP) = PNumber(thisP) ** 0.95 - log(PNumber(thisP))
             end where
-
         case default
             !% should not reach this stage
             print*, 'In ', subroutine_name
             print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
             print *, 'which has key ',trim(reverseKey(SlotMethod))
             stop 38756
-
         end select
 
     end subroutine ll_slot_computation_ETM
 !%
 !%==========================================================================
 !%==========================================================================
-!%
-        !%------------------------------------------------------------------
-        !% Description:
-        !%
-        !%------------------------------------------------------------------
-        !% Declarations:
-        !%------------------------------------------------------------------
-        !% Preliminaries:
-        !%------------------------------------------------------------------
-        !% Aliases:
-        !%------------------------------------------------------------------
-    
-    
-        !%------------------------------------------------------------------
-        !% Closing:
-
+!%      
+ 
 !%==========================================================================
 !% END OF MODULE
 !%==========================================================================
