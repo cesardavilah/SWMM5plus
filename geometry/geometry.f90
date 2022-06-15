@@ -214,7 +214,7 @@ module geometry
         call geo_ell (thisColP_all)
 
         !% find the proper head using the modified hydraulic depth
-        call geo_head_from_ell (thisColP_all)
+        ! call geo_head_from_ell (thisColP_all)
         
         !% make adjustments for slots on closed elements only for ETM
         if (whichTM .eq. ETM) then
@@ -1089,7 +1089,7 @@ subroutine geo_head_from_ell (thisColP)
         integer, intent(in) :: thisColP
         integer, pointer    :: thisP(:), Npack
         real(8), pointer    :: SlotWidth(:), SlotVolume(:), SlotDepth(:)
-        real(8), pointer    :: volume(:), depth(:), area(:), SlotArea(:)
+        real(8), pointer    :: volume(:), ell(:), depth(:), area(:), SlotArea(:)
         real(8), pointer    :: head(:), fullVolume(:), fullArea(:), fullDepth(:)
         real(8), pointer    :: Overflow(:), zbottom(:), ellMax(:), SlotHydRad(:)
         logical, pointer    :: isSlot(:)
@@ -1103,6 +1103,7 @@ subroutine geo_head_from_ell (thisColP)
         Npack      => npack_elemP(thisColP)
         area       => elemR(:,er_Area)
         depth      => elemR(:,er_Depth)
+        ell        => elemR(:,er_ell)
         ellMax     => elemR(:,er_ell_max)
         fullDepth  => elemR(:,er_FullDepth)
         fullvolume => elemR(:,er_FullVolume)
@@ -1126,7 +1127,9 @@ subroutine geo_head_from_ell (thisColP)
                 volume(thisP) = volume(thisP)  + SlotVolume(thisP)
                 area(thisP)   = area(thisP)    + SlotArea(thisP)
                 depth(thisP)  = depth(thisP)   + SlotDepth(thisP)
-                head(thisP)   = head(thisP)    + SlotDepth(thisP)
+                ! head(thisP)   = head(thisP)    + SlotDepth(thisP)
+                head(thisP)   = zbottom(thisP) + fullDepth(thisP) +  SlotDepth(thisP)
+                ell(thisP)    = ell(thisP)     + SlotDepth(thisP) 
                 Overflow(thisP) = zeroR
             end where 
         end if

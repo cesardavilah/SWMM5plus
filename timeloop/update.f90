@@ -289,6 +289,16 @@ module update
                 thisP2 => elemP(1:Npack2,thisCol_AC)
                 wavespeed(thisP2) = wavespeed(thisP2) * setting%ACmethod%Celerity%RC
             end if
+        else if (whichTM .eq. ETM) then
+            Npack2 => npack_elemP(thisCol_ClosedElems)
+            if (Npack2 > 0) then
+                thisP2 => elemP(1:Npack2,thisCol_ClosedElems)
+                !% initialize preissmann slot celerity
+                PCelerity(thisP2) = zeroR
+                where (isSlot(thisP)) 
+                    PCelerity(thisP2) = sqrt(grav * elemR(thisP2,er_Area)/SlotWidth(thisP2))
+                end where
+            end if
         end if
 
         where (.not. isSlot(thisP))

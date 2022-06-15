@@ -1317,7 +1317,7 @@ module lowlevel_rk2
             where (SlotArea(thisP) .gt. zeroR)
                 SlotWidth(thisP) = (grav * fullArea(thisP)) / (TargetPCelerity**2.0)
                 SlotDepth(thisP)  = SlotArea(thisP) / SlotWidth(thisP)
-                PCelerity(thisP)  = sqrt(grav * fullarea(thisP) / SlotWidth(thisP))
+                ! PCelerity(thisP)  = sqrt(grav * fullarea(thisP) / SlotWidth(thisP))
                 isSlot(thisP)     = .true.
             end where
 
@@ -1333,7 +1333,7 @@ module lowlevel_rk2
             !% find incipient surcharge  and non-surcharged elements reset the preissmann number and celerity
             where ((SlotArea(thisP) .le. zeroR) .or. (AreaN0(thisP) .le. fullArea(thisP)))
                 PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
-                PCelerity(thisP) = TargetPCelerity / PNumber(thisP)
+                ! PCelerity(thisP) = TargetPCelerity / PNumber(thisP)
             end where
 
             !% testing: consolidate later
@@ -1341,9 +1341,9 @@ module lowlevel_rk2
                 !% set the slot boolean as true
                 isSlot(thisP)  = .true.
                 !% update the preissmann celerity here
-                PCelerity(thisP) = TargetPCelerity / PNumber(thisP)
+                ! PCelerity(thisP) = TargetPCelerity / PNumber(thisP)
                 !% find the water height at the slot
-                SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
+                SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)+SlotArea(thisP)))
                 !% find the width of the slot
                 SlotWidth(thisP)  = SlotArea(thisP) / SlotDepth(thisP) 
             end where

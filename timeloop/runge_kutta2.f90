@@ -779,13 +779,12 @@ module runge_kutta2
                     !% pointer packed element indexes
                     thisP => elemP(1:Npack,thisCol)
                     !% get a new decreased preissmann number for the next time step
-                    PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
-                    ! PNumber(thisP) = PNumber(thisP) ** 0.95 - log(PNumber(thisP))
+                    ! PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
+                    PNumber(thisP) = PNumber(thisP) ** 1.0 - log(PNumber(thisP))
                     !% update all faces
                     call face_interpolation(fp_all,dummy)
                     !% update the preissmann number from using simple face interpolation
                     PNumber(thisP) = max(onehalfR * (fPNumber(fUp(thisP)) + fPNumber(fDn(thisP))), oneR)
-                    ! PNumber(thisP) = max(PNumber(thisP)**0.95 - log(PNumber(thisP)), oneR)
                 end if
 
             case default
