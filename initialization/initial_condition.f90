@@ -1019,6 +1019,17 @@ contains
                 elemSR(:,esr_Orifice_Orate)              = link%R(thisLink,lr_DischargeCoeff2)
                 elemSR(:,esr_Orifice_Zcrest)             = elemR(:,er_Zbottom) + link%R(thisLink,lr_InletOffset)
                 elemSR(:,esr_Orifice_Zcrown)             = elemSR(:,esr_Orifice_Zcrest) + link%R(thisLink,lr_FullDepth)
+
+                !% HACK: testing stuff
+                elemR(:,er_Zcrown)                = elemR(:,er_Zbottom) + elemR(:,er_FullDepth)
+                elemR(:,er_ZbreadthMax)           = elemR(:,er_FullDepth)/twoR + elemR(:,er_Zbottom)
+                elemR(:,er_BreadthMax)            = elemR(:,er_FullDepth) 
+                elemR(:,er_AreaBelowBreadthMax)   = elemR(:,er_FullArea)  / twoR
+                elemR(:,er_ell_max)               = ((elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
+                                                    elemR(:,er_AreaBelowBreadthMax)) / elemR(:,er_BreadthMax)
+                ! elemR(:,er_Preissmann_Number) = setting%PreissmannSlot%TargetPreissmannCelerity &
+                !                                 / (setting%PreissmannSlot%PreissmannAlpha * &
+                !                                 sqrt(setting%Constant%gravity * elemR(:,er_FullDepth)))
             end where
 
         case default
@@ -1732,8 +1743,8 @@ contains
             elemR(:,er_InterpWeight_dG) = setting%Limiter%InterpWeight%Maximum
             elemR(:,er_InterpWeight_uH) = setting%Limiter%InterpWeight%Maximum
             elemR(:,er_InterpWeight_dH) = setting%Limiter%InterpWeight%Maximum
-            elemR(:,er_InterpWeight_uP) = setting%Limiter%InterpWeight%Maximum
-            elemR(:,er_InterpWeight_dP) = setting%Limiter%InterpWeight%Maximum
+            elemR(:,er_InterpWeight_uP) = setting%Limiter%InterpWeight%Minimum
+            elemR(:,er_InterpWeight_dP) = setting%Limiter%InterpWeight%Minimum
         endwhere
 
         !% H-diagnostic elements will have minimum interp weights for H and G

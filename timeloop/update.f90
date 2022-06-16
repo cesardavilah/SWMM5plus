@@ -334,9 +334,11 @@ module update
         !% but may be modified elsewhere
         w_uG(thisP) = w_uQ(thisP)
         w_dG(thisP) = w_dQ(thisP)
+
+        !% NOTE: We actually dont need w_uP anymore. Fix this in next release
         w_uP(thisP) = w_uQ(thisP)
         w_dP(thisP) = w_dQ(thisP)
-        
+
         !% head uses length scale interpolation
         !% This shouldn't need limiters.
         w_uH(thisP) = onehalfR * length(thisP)

@@ -335,7 +335,7 @@ module orifice_elements
         else
             Depth = Zcrown - Zcrest
         end if
-
+        Head = Zcrest + Depth
         !% set geometry
         select case (GeometryType)
             case (rectangular_closed)
