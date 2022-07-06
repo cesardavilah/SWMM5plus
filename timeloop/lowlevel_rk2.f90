@@ -1299,61 +1299,44 @@ module lowlevel_rk2
         cfl                 => setting%VariableDT%CFL_target
         grav                => setting%Constant%gravity
 
+        !% initialize slot
+        SlotVolume(thisP) = max(volume(thisP) - fullvolume(thisP), zeroR)
+        SlotArea(thisP)   = max(SlotVolume(thisP) / length(thisP), zeroR)
+        SlotDepth(thisP)  = zeroR
+        SlotWidth(thisP)  = zeroR
+        PCelerity(thisP)  = zeroR
+        isSlot(thisP)     = .false.
+
         select case (SlotMethod)
+            case (StaticSlot)
+                !% find incipient surcharge  and non-surcharged elements reset the preissmann number
+                where (SlotArea(thisP) .le. zeroR)
+                    PNumber(thisP) =  oneR
+                end where
 
-        case (StaticSlot)
-            !% initialize slot
-            SlotDepth(thisP)  = zeroR
-            SlotWidth(thisP)  = zeroR
-            PCelerity(thisP)  = zeroR
-            SlotVolume(thisP) = zeroR
-            SlotArea(thisP)   = zeroR
-            isSlot(thisP)     = .false.
+            case (DynamicSlot)
+                !% find incipient surcharge  and non-surcharged elements reset the preissmann number and celerity for dynamic slot
+                where ((SlotArea(thisP) .le. zeroR) .or. (AreaN0(thisP) .le. fullArea(thisP)))
+                    PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
+                end where
 
-            !% find the slot volume and area
-            SlotVolume(thisP) = max(volume(thisP) - fullvolume(thisP), zeroR)
-            SlotArea(thisP)   = max(SlotVolume(thisP) / length(thisP), zeroR)
-
-            where (SlotArea(thisP) .gt. zeroR)
-                SlotWidth(thisP) = (grav * fullArea(thisP)) / (TargetPCelerity**2.0)
-                SlotDepth(thisP)  = SlotArea(thisP) / SlotWidth(thisP)
-                ! PCelerity(thisP)  = sqrt(grav * fullarea(thisP) / SlotWidth(thisP))
-                isSlot(thisP)     = .true.
-            end where
-
-        case (DynamicSlot)
-            !% initialize slot
-            SlotVolume(thisP) = max(volume(thisP) - fullvolume(thisP), zeroR)
-            SlotArea(thisP)   = max(SlotVolume(thisP) / length(thisP), zeroR)
-            SlotDepth(thisP)  = zeroR
-            SlotWidth(thisP)  = zeroR
-            PCelerity(thisP)  = zeroR
-            isSlot(thisP)     = .false.
-
-            !% find incipient surcharge  and non-surcharged elements reset the preissmann number and celerity
-            where ((SlotArea(thisP) .le. zeroR) .or. (AreaN0(thisP) .le. fullArea(thisP)))
-                PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
-                ! PCelerity(thisP) = TargetPCelerity / PNumber(thisP)
-            end where
-
-            !% testing: consolidate later
-            where (SlotArea(thisP) .gt. zeroR)
-                !% set the slot boolean as true
-                isSlot(thisP)  = .true.
-                !% update the preissmann celerity here
-                ! PCelerity(thisP) = TargetPCelerity / PNumber(thisP)
-                !% find the water height at the slot
-                SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)+SlotArea(thisP)))
-                !% find the width of the slot
-                SlotWidth(thisP)  = SlotArea(thisP) / SlotDepth(thisP) 
-            end where
-        case default
-            !% should not reach this stage
-            print*, 'In ', subroutine_name
-            print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
-            print *, 'which has key ',trim(reverseKey(SlotMethod))
-            stop 38756
+            case default
+                !% should not reach this stage
+                print*, 'In ', subroutine_name
+                print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
+                print *, 'which has key ',trim(reverseKey(SlotMethod))
+                stop 38756
         end select
+
+        !% Slot Calculation
+        where (SlotArea(thisP) .gt. zeroR)
+            !% set the slot boolean as true
+            isSlot(thisP)  = .true.
+            !% find the water height at the slot
+            SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
+            !% find the width of the slot
+            SlotWidth(thisP)  = SlotArea(thisP) / SlotDepth(thisP) 
+        end where
 
     end subroutine ll_slot_computation_ETM
 !%

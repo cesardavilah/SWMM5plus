@@ -1743,8 +1743,6 @@ contains
             elemR(:,er_InterpWeight_dG) = setting%Limiter%InterpWeight%Maximum
             elemR(:,er_InterpWeight_uH) = setting%Limiter%InterpWeight%Maximum
             elemR(:,er_InterpWeight_dH) = setting%Limiter%InterpWeight%Maximum
-            elemR(:,er_InterpWeight_uP) = setting%Limiter%InterpWeight%Minimum
-            elemR(:,er_InterpWeight_dP) = setting%Limiter%InterpWeight%Minimum
         endwhere
 
         !% H-diagnostic elements will have minimum interp weights for H and G
@@ -1758,8 +1756,6 @@ contains
             elemR(:,er_InterpWeight_dG) = setting%Limiter%InterpWeight%Minimum
             elemR(:,er_InterpWeight_uH) = setting%Limiter%InterpWeight%Minimum
             elemR(:,er_InterpWeight_dH) = setting%Limiter%InterpWeight%Minimum
-            elemR(:,er_InterpWeight_uP) = setting%Limiter%InterpWeight%Maximum
-            elemR(:,er_InterpWeight_dP) = setting%Limiter%InterpWeight%Maximum
         endwhere
 
         ! !% brh 20220204 -- ccommenting this approach

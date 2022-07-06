@@ -214,7 +214,7 @@ module geometry
         call geo_ell (thisColP_all)
 
         !% find the proper head using the modified hydraulic depth
-        ! call geo_head_from_ell (thisColP_all)
+        call geo_head_from_ell (thisColP_all)
         
         !% make adjustments for slots on closed elements only for ETM
         if (whichTM .eq. ETM) then

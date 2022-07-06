@@ -1012,7 +1012,7 @@ module adjust
             integer, pointer :: thisCol, Npack
             integer, pointer :: thisP(:), mapUp(:), mapDn(:)
             real(8), pointer :: coef, multiplier, smallDepth
-            real(8), pointer :: elemCrown(:), elemZbot(:), Vvalue(:), elemEllMax(:)
+            real(8), pointer :: elemCrown(:), elemZbot(:), Vvalue(:), elemEllMax(:), Zbottom(:)
             real(8), pointer :: faceHeadUp(:), faceHeadDn(:), elemHead(:), elemVel(:)
             real(8), pointer :: w_uH(:), w_dH(:)
             character(64) :: subroutine_name = 'adjust_Vshaped_head_surcharged'
@@ -1059,12 +1059,13 @@ module adjust
             w_uH       => elemR(:,er_InterpWeight_uH)
             w_dH       => elemR(:,er_InterpWeight_dH)
             Vvalue     => elemR(:,er_Temp01)
+            Zbottom    => elemR(:,er_Zbottom)
 
             multiplier => setting%Adjust%Head%FullDepthMultiplier
 
         !%-------------------------------------------------------------------
         !% find the cells that are surcharged
-            Vvalue(thisP) = elemHead(thisP) - 0.99 * elemCrown(thisP)
+            Vvalue(thisP) = elemHead(thisP) - 0.99 * (elemEllMax(thisP)+Zbottom(thisP))
             ! Vvalue(thisP) = elemHead(thisP) - (elemEllMax(thisP) + elemZbot(thisP))
             where (Vvalue(thisP) > zeroR)
                 Vvalue(thisP) = oneR

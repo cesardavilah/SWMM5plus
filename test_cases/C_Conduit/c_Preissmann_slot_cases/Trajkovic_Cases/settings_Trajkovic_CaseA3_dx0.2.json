@@ -96,8 +96,8 @@
     },
     "PreissmannSlot" : {
         "PreissmannSlotMethod" : "DynamicSlot",
-        "TargetPreissmannCelerity" : 10.00,
-        "PreissmannAlpha" : 3.0
+        "TargetPreissmannCelerity" : 100.00,
+        "PreissmannAlpha" : 5.0
     },
     "VariableDT" : {
         "ApplyYN" : true,

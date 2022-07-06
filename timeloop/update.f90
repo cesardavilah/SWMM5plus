@@ -245,8 +245,6 @@ module update
         w_dG      => elemR(:,er_InterpWeight_dG)
         w_uH      => elemR(:,er_InterpWeight_uH)
         w_dH      => elemR(:,er_InterpWeight_dH)
-        w_uP      => elemR(:,er_InterpWeight_uP)
-        w_dP      => elemR(:,er_InterpWeight_dP)
         Fr        => elemR(:,er_FroudeNumber)  !BRHbugfix20210811 test
         isSlot    => elemYN(:,eYN_isSlot)
 
@@ -296,7 +294,7 @@ module update
                 !% initialize preissmann slot celerity
                 PCelerity(thisP2) = zeroR
                 where (isSlot(thisP)) 
-                    PCelerity(thisP2) = sqrt(grav * elemR(thisP2,er_Area)/SlotWidth(thisP2))
+                    PCelerity(thisP2) = sqrt(grav * fullArea(thisP2)/SlotWidth(thisP2))
                 end where
             end if
         end if
@@ -334,10 +332,6 @@ module update
         !% but may be modified elsewhere
         w_uG(thisP) = w_uQ(thisP)
         w_dG(thisP) = w_dQ(thisP)
-
-        !% NOTE: We actually dont need w_uP anymore. Fix this in next release
-        w_uP(thisP) = w_uQ(thisP)
-        w_dP(thisP) = w_dQ(thisP)
 
         !% head uses length scale interpolation
         !% This shouldn't need limiters.

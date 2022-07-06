@@ -579,7 +579,7 @@ module face
         else
             !% only interpolate the preissmann
             call face_interp_interior_set &
-                (fPreissmenSet, ePreissmenSet, er_InterpWeight_dP, er_InterpWeight_uP, facePackCol, Npack)
+                (fPreissmenSet, ePreissmenSet, er_InterpWeight_dQ, er_InterpWeight_uQ, facePackCol, Npack)
         end if
         !%------------------------------------------------------------------
         !% Closing
@@ -675,7 +675,7 @@ module face
             ! print *, "HACK missing hydraulic jump that occurs on shared faces 36987"
         else
             call face_interp_shared_set &
-                (fPreissmenSet, eGhostPreissmenSet, ebgr_InterpWeight_dP, ebgr_InterpWeight_uP, facePackCol, Npack)
+                (fPreissmenSet, eGhostPreissmenSet, ebgr_InterpWeight_dQ, ebgr_InterpWeight_uQ, facePackCol, Npack)
         end if
         !%-------------------------------------------------------------------
         !% closing   
@@ -1062,7 +1062,7 @@ module face
         !% transfers local data from elemR to elemB%R
         !%-------------------------------------------------------------------
         !% Declarations
-            integer             :: ii, eColumns(14) 
+            integer             :: ii, eColumns(12) 
             integer, intent(in) :: facePackCol, Npack
             integer, pointer    :: thisP, eUp, eDn
             logical, pointer    :: isGhostUp, isGhostDn
@@ -1076,7 +1076,7 @@ module face
         !% HACK: this eset has to be exactly the same to work
         eColumns = [er_Area, er_Topwidth, er_HydDepth, er_Head, er_Flowrate, er_Preissmann_Number,  &
                     er_InterpWeight_dG, er_InterpWeight_uG, er_InterpWeight_dH, er_InterpWeight_uH, &
-                    er_InterpWeight_dQ, er_InterpWeight_uQ, ebgr_InterpWeight_dP, ebgr_InterpWeight_uP] 
+                    er_InterpWeight_dQ, er_InterpWeight_uQ] 
 
         !%--------------------------------------------------------------------
         !% cycle through all the shared faces
