@@ -9,7 +9,7 @@
         "LinkShortingFactor" : 0.33,
         "MinElemLengthFactor" : 0.5,
         "MinElemLengthMethod" : "RawElemLength",
-        "NominalElemLength" : 0.1
+        "NominalElemLength" : 0.2
     },
     "Limiter" : {
         "BC" : {
@@ -67,7 +67,7 @@
             "provideYN" : true,
             "suppress_MultiLevel_Output" : false,
             "StartTime" : 115.0,
-            "TimeInterval" : 0.1,
+            "TimeInterval" : 0.2,
             "TimeUnits" : "Seconds"
         }
     },
@@ -96,8 +96,8 @@
     },
     "PreissmannSlot" : {
         "PreissmannSlotMethod" : "DynamicSlot",
-        "TargetPreissmannCelerity" : 100.00,
-        "PreissmannAlpha" : 5.0
+        "TargetPreissmannCelerity" : 100.0,
+        "PreissmannAlpha" : 5.00
     },
     "VariableDT" : {
         "ApplyYN" : true,
@@ -151,7 +151,7 @@
     "Solver" : {
         "PreissmannSlot" : true,
         "SubtractReferenceHead" : false,
-        "MomentumSourceMethod" : "T20",
+        "MomentumSourceMethod" : "T00",
         "SolverSelect" : "ETM",
         "SwitchFractionDn" : 0.8,
         "SwitchFractionUp" : 0.9,
