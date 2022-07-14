@@ -71,8 +71,8 @@ DRY_ONLY         NO
 [ORIFICES]
 ;;Name           From Node        To Node          Type         Offset     Qcoeff     Gated    CloseTime 
 ;;-------------- ---------------- ---------------- ------------ ---------- ---------- -------- ----------
-2                2                3                SIDE         0          0.84       NO         0.0015       
-4                4                5                SIDE         0          0.84       NO         0.0015        
+2                2                3                SIDE         0          0.6        NO              
+4                4                5                SIDE         0          0.6        NO            
 
 [XSECTIONS]
 ;;Link           Shape        Geom1            Geom2      Geom3      Geom4      Barrels    Culvert   

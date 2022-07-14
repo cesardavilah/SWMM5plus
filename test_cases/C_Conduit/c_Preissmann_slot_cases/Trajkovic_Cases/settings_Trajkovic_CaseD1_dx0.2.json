@@ -95,15 +95,15 @@
         }
     },
     "PreissmannSlot" : {
-        "PreissmannSlotMethod" : "StaticSlot",
-        "TargetPreissmannCelerity" : 2.77,
+        "PreissmannSlotMethod" : "DynamicSlot",
+        "TargetPreissmannCelerity" : 100.0,
         "PreissmannAlpha" : 5.00
     },
     "VariableDT" : {
         "ApplyYN" : true,
-        "CFL_hi_max" : 0.4,
-        "CFL_target" : 0.3,
-        "CFL_lo_max" : 0.2,
+        "CFL_hi_max" : 0.6,
+        "CFL_target" : 0.5,
+        "CFL_lo_max" : 0.4,
         "increaseFactor" : 1.2,
         "NstepsForCheck" : 10
     },
@@ -119,7 +119,7 @@
             "SmallDepthMultiplier" : 1.0
         },
         "Head" : {
-            "ApplyYN" : true,
+            "ApplyYN" : false,
             "Approach" : "vshape_surcharge_only",
             "Coef" : 1.0,
             "FullDepthMultiplier" : 0.00001
@@ -147,7 +147,7 @@
             ],
             [   
                 0.33,
-                0.00,
+                0.00001,
                 0.33
             ]
         ]

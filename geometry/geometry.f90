@@ -1127,8 +1127,7 @@ subroutine geo_head_from_ell (thisColP)
                 volume(thisP) = volume(thisP)  + SlotVolume(thisP)
                 area(thisP)   = area(thisP)    + SlotArea(thisP)
                 depth(thisP)  = depth(thisP)   + SlotDepth(thisP)
-                ! head(thisP)   = head(thisP)    + SlotDepth(thisP)
-                head(thisP)   = zbottom(thisP) + fullDepth(thisP) +  SlotDepth(thisP)
+                head(thisP)   = head(thisP)    + SlotDepth(thisP)
                 ell(thisP)    = ell(thisP)     + SlotDepth(thisP) 
                 Overflow(thisP) = zeroR
             end where 

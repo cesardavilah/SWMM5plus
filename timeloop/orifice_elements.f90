@@ -109,6 +109,11 @@ module orifice_elements
         !% find effective orifice opening
         EffectiveFullDepth = FullDepth * CurrentSetting
 
+        ! print*, '................................'
+        ! write(*,"(a22,i8)") 'eidx                = ',eIdx
+        ! write(*,"(a22,f9.3)")'Time               = ',setting%Time%Now
+        ! write(*,"(a22,f9.3)")'EffectiveFullDepth = ',EffectiveFullDepth
+
         if (setting%Debug%File%orifice_elements)  &
             write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
     end subroutine orifice_set_settings

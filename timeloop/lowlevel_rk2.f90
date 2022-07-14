@@ -1316,7 +1316,7 @@ module lowlevel_rk2
 
             case (DynamicSlot)
                 !% find incipient surcharge  and non-surcharged elements reset the preissmann number and celerity for dynamic slot
-                where ((SlotArea(thisP) .le. zeroR) .or. (AreaN0(thisP) .le. fullArea(thisP)))
+                where ((SlotArea(thisP) .le. zeroR))
                     PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
                 end where
 
@@ -1333,9 +1333,11 @@ module lowlevel_rk2
             !% set the slot boolean as true
             isSlot(thisP)  = .true.
             !% find the water height at the slot
-            SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
+            SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP) + SlotArea(thisP)))
             !% find the width of the slot
-            SlotWidth(thisP)  = SlotArea(thisP) / SlotDepth(thisP) 
+            SlotWidth(thisP) = SlotArea(thisP) / SlotDepth(thisP) 
+            !% Preissmann Celerity
+            PCelerity(thisP) = TargetPCelerity / PNumber(thisP)
         end where
 
     end subroutine ll_slot_computation_ETM
