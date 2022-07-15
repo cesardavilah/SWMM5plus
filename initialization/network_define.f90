@@ -713,7 +713,7 @@ contains
             select case (nodeType)
 
                 !% Handle upstream boundary nodes
-            case(nBCup, nJ1)                                            !% brh20211217
+            case(nBCup, nBCdn, nJ1)                                            !% brh20211217
                 !% Check 2: If the node has already been assigned
                 if (nAssignStatus == nUnassigned) then
 
@@ -731,7 +731,9 @@ contains
                     faceI(FaceLocalCounter,fi_Melem_dL) = ElemLocalCounter
                     if (nodeType == nBCup) then
                         faceI(FaceLocalCounter,fi_BCtype)   = BCup
-                    else 
+                    else if (nodeType == nBCdn) then
+                        faceI(FaceLocalCounter,fi_BCtype)   = BCdn
+                    else
                         faceI(FaceLocalCounter,fi_BCtype)   = BCnone
                     end if
                     node%I(thisNode,ni_elemface_idx)    = FaceLocalCounter

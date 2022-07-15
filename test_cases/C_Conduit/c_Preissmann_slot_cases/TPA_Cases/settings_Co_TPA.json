@@ -2,14 +2,14 @@
     "JSON_FoundFileYN" : true,
     "JSON_CheckAllInputYN" : false,
     "CaseName" : {
-        "Long"  : "VasconcelosTPA_noUpStorage",
-        "Short" : "TPA_noUpStorage"
+        "Long"  : "VasconcelosTPA",
+        "Short" : "TPA"
     },
     "Discretization" : {
         "LinkShortingFactor" : 0.33,
         "MinElemLengthFactor" : 0.5,
         "MinElemLengthMethod" : "ElemLengthAdjust",
-        "NominalElemLength" : 0.036
+        "NominalElemLength" : 0.715
     },
     "Limiter" : {
         "BC" : {
@@ -65,7 +65,7 @@
             "useSWMMinpYN" :false,
             "provideYN" : true,
             "suppress_MultiLevel_Output" : false,
-            "StartTime" : 54.0,
+            "StartTime" : 0.0,
             "TimeInterval" : 0.1,
             "TimeUnits" : "Seconds"
         }
@@ -122,5 +122,14 @@
             "Approach" : "vshape_surcharge_only",
             "Coef" : 1.0
         }
+    },
+    "Solver" : {
+        "PreissmannSlot" : true,
+        "SubtractReferenceHead" : false,
+        "MomentumSourceMethod" : "T00",
+        "SolverSelect" : "ETM",
+        "SwitchFractionDn" : 0.8,
+        "SwitchFractionUp" : 0.9,
+        "ReferenceHead"     : 0.0
     }
 }
