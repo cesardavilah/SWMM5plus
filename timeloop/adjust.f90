@@ -1065,7 +1065,7 @@ module adjust
 
         !%-------------------------------------------------------------------
         !% find the cells that are surcharged
-            Vvalue(thisP) = elemHead(thisP) - 0.99 * (elemEllMax(thisP)+Zbottom(thisP))
+            Vvalue(thisP) = elemHead(thisP) - (elemEllMax(thisP)+Zbottom(thisP))
             ! Vvalue(thisP) = elemHead(thisP) - (elemEllMax(thisP) + elemZbot(thisP))
             where (Vvalue(thisP) > zeroR)
                 Vvalue(thisP) = oneR
