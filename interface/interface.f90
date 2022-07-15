@@ -1,4 +1,4 @@
-module interface
+module interface_
 
     use iso_c_binding
     use c_library
@@ -2333,4 +2333,4 @@ contains
 !% END MODULE interface
 !%=============================================================================
 !%
-end module interface
+end module interface_

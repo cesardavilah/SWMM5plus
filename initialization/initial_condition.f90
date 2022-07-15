@@ -25,7 +25,7 @@ module initial_condition
     use triangular_channel, only: triangular_area_from_depth
     use storage_geometry
     use adjust
-    use interface, only: interface_get_nodef_attribute
+    use interface_, only: interface_get_nodef_attribute
     use utility_profiler
     use utility_allocate
     use utility_deallocate
