@@ -143,6 +143,7 @@ module define_settings
         logical :: isHydRadiusOut           = .false.
         logical :: isPerimeterOut           = .false.
         logical :: isSlotWidthOut           = .false.
+        logical :: isSlotVolumeOut          = .true. 
         logical :: isSlotDepthOut           = .false.
         logical :: isTopWidthOut            = .false.
         logical :: isVelocityOut            = .true.
@@ -388,10 +389,11 @@ module define_settings
 
     !% setting%Discretization
     type DiscretizationType
-        real(8) :: LinkShortingFactor  = 0.33
-        real(8) :: MinElemLengthFactor = 0.50
+        logical :: AdjustLinkLengthYN = .true.
+        real(8) :: ElemShortingFactor  = 0.33d0
+        real(8) :: MinElemLengthFactor = 0.5d0
         integer :: MinElemLengthMethod = ElemLengthAdjust
-        real(8) :: NominalElemLength   = 10.0
+        real(8) :: NominalElemLength   = 10.0d0
     end type DiscretizationType
 
     ! setting%Eps
@@ -466,7 +468,8 @@ module define_settings
     end type LimiterType
 
     type LinkType
-        integer ::        DefaultInitDepthType = LinearlyVarying ! uniform, linear, exponential
+        ! UniformDepth, LinearlyVaryingDepth, IncreasingDepth,  FixedHead
+        integer ::        DefaultInitDepthType = LinearlyVaryingDepth 
         ! HACK - TODO file for properties of specific links
     end type LinkType
 
@@ -1044,10 +1047,16 @@ contains
 
     !% Discretization. =====================================================================
         !% -- Nominal element length adjustment
-        !%                      Discretization.LinkShortingFactor
-        call json%get('Discretization.LinkShortingFactor', real_value, found)
-        if (found) setting%Discretization%LinkShortingFactor = real_value
-        if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Discretization.LinkShortingFactor not found'
+        !%                      Discretization.AdjustLinkLengthYN
+        call json%get('Discretization.AdjustLinkLengthYN', logical_value, found)
+        if (found) setting%Discretization%AdjustLinkLengthYN = logical_value
+        if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Discretization.AdjustLinkLengthYN not found'
+        
+        !% -- Nominal element length adjustment
+        !%                      Discretization.ElemShortingFactor
+        call json%get('Discretization.ElemShortingFactor', real_value, found)
+        if (found) setting%Discretization%ElemShortingFactor = real_value
+        if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Discretization.ElemShortingFactor not found'
         
         !%                       Discretization.MinElemLengthFactor
         call json%get('Discretization.MinElemLengthFactor', real_value, found)
@@ -1403,6 +1412,11 @@ contains
         call json%get('Output.DataOut.isSlotDepthOut', logical_value, found)
         if (found) setting%Output%DataOut%isSlotDepthOut = logical_value
         if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Output.DataOut.isSlotDepthOut not found'
+
+        !%                       Dataout.isSlotVolumeOut
+        call json%get('Output.DataOut.isSlotVolumeOut', logical_value, found)
+        if (found) setting%Output%DataOut%isSlotVolumeOut = logical_value
+        if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Output.DataOut.isSlotVolumeOut not found'
         
         !%                       Dataout.isTopWidthOut
         call json%get('Output.DataOut.isTopWidthOut', logical_value, found)

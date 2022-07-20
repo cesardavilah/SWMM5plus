@@ -284,11 +284,12 @@ module interface_
             real(c_double),        intent(inout) :: y
         end function api_get_next_entry_table
         !% -------------------------------------------------------------------------------
-        integer(c_int) function api_get_next_entry_tseries(tseries_idx) &
+        integer(c_int) function api_get_next_entry_tseries(tseries_idx, timemax) &
             BIND(C, name="api_get_next_entry_tseries")
             use, intrinsic :: iso_c_binding
             implicit none
             integer(c_int), value, intent(in   ) :: tseries_idx
+            real(c_double), value, intent(in   ) :: timemax
         end function api_get_next_entry_tseries
         !% -------------------------------------------------------------------------------
         ! --- Output Writing (Post Processing)
@@ -698,41 +699,48 @@ contains
             write(*,"(3(A,i5),A)") '*** enter ' // trim(subroutine_name) // &
             "(node_idx=", node_idx, ", attr=", attr, ")" // " [Processor ", this_image(), "]"
 
-        if ((attr > N_api_nodef_attributes) .or. (attr < 1)) then
+        if ((attr .ge. api_nodef_end) .or. (attr .le. api_nodef_start)) then
             print *, "error: unexpected node attribute value", attr
+            print *, trim(reverseKey_api(attr))
             !stop 
             call util_crashpoint( 948705)
-            return
+            !return
         end if
 
         if ((node_idx > N_node) .or. (node_idx < 1)) then
             print *, "error: unexpected node index value", node_idx
+            print *, trim(reverseKey_api(attr))
             !stop 
             call util_crashpoint( 397904)
-            return
+            !return
         end if
-
-        !% Substracts 1 to every Fortran index (it becomes a C index)
+        
+        !% --- Subtract 1 from every Fortran index (it becomes a C index)
         call load_api_procedure("api_get_nodef_attribute")
+        !% --- get the node value
         error = ptr_api_get_nodef_attribute(node_idx-1, attr, node_value)
         !print *, '   node value ',node_value
         call print_api_error(error, subroutine_name)
 
         !% Adds 1 to every C index extracted from EPA-SWMM (it becomes a Fortran index)
-        if ((attr == api_nodef_extInflow_tSeries) .or. (attr == api_nodef_extInflow_basePat_idx)) then
+        if (    (attr == api_nodef_extInflow_tSeries    )    &
+           .or. (attr == api_nodef_extInflow_basePat_idx)    &
+           .or. (attr == api_nodef_head_tSeries) ) then
             if (node_value /= -1) node_value = node_value + 1
         end if
+
 
         !write(*,*) '.................'
         if (setting%Debug%File%interface) &
             write(*,"(3(A,i5),A)") '*** leave ' // trim(subroutine_name) // &
             "(node_idx=", node_idx, ", attr=", attr, ")" // " [Processor ", this_image(), "]"
+            
     end function interface_get_nodef_attribute
 !%
 !%=============================================================================
 !%=============================================================================
 !%
-    function interface_get_linkf_attribute(link_idx, attr) result(link_value)
+function interface_get_linkf_attribute(link_idx, attr, isInt) result(link_value)
         !%-----------------------------------------------------------------------------
         !% Description:
         !%    Retrieves link attributes from EPA-SWMM. API link attributes are
@@ -742,315 +750,918 @@ contains
         !%    necessary. Fortran indexes always start from 1, whereas C indexes
         !%    start from 0.
         !%-----------------------------------------------------------------------------
-            integer :: link_idx, attr, error
+            integer :: link_idx, attr, error, ilink_value
+
+            logical :: isInt !% true output integer is expected, false for real
 
             real(c_double), target :: link_value
             character(64) :: thisposition
             character(64) :: subroutine_name = 'interface_get_linkf_attribute'
         !%-----------------------------------------------------------------------------
 
+        !print *, 'calling linkf_attribute'
         if (setting%Debug%File%interface) &
             write(*,"(3(A,i5),A)") '*** enter ' // trim(subroutine_name) // &
             "(link_idx=", link_idx, ", attr=", attr, ")" // " [Processor ", this_image(), "]"
             !print *, 'API_CONDUIT', API_CONDUIT,',link_value',link_value
-        if ((attr > N_api_total_linkf_attributes) .or. (attr < 1)) then
-            print *, "error: unexpected link attribute value", attr
-            !stop 
-            call util_crashpoint( 498705)
-            return
-        end if
-
-        if ((link_idx > SWMM_N_link) .or. (link_idx < 1)) then
+    
+        if ((link_idx > N_link) .or. (link_idx < 1)) then
             print *, "error: unexpected link index value", link_idx
-            !stop 
-            call util_crashpoint( 9987355)
-            return
+            print *, trim(reverseKey_api(attr))
+            call util_crashpoint(9987355)
+            !return
         end if
 
-        if (attr <= N_api_linkf_attributes) then
-            ! Fortran index starts in 1, whereas in C starts in 0
+        !if (attr == 30) then
+           !print *, 'link idx, attr', link_idx, attr, trim(reverseKey_api(attr))
+        !end if
+
+        if     (  attr .le. api_linkf_start) then    
+            print *, "error: unexpected link attribute value", attr
+            print *, trim(reverseKey_api(attr)) 
+            call util_crashpoint( 498705)
+            !return
+
+        elseif     ( (attr  >   api_linkf_start) .and. (  attr <  api_linkf_commonbreak)) then
+            !% --- for link attributes 1 to < api_linkf_commonBreak
+            !%      we simply read in the link value and exit this routine
+            !print *, 'call AAA '
             call load_api_procedure("api_get_linkf_attribute")
+            ! link index-1 because Fortran index starts in 1, whereas in C starts in 0
             error = ptr_api_get_linkf_attribute(link_idx-1, attr, link_value)
             thisposition = trim(subroutine_name)//'_A01'
             call print_api_error(error, thisposition)
-        else if ( (attr > N_api_linkf_attributes) .and. &
-                  (attr <= (N_api_linkf_attributes + N_api_linkf_type_attributes)) )then
+
+        elseif (  attr == api_linkf_commonBreak) then
+            !% this should never be called
+            print *, "error: unexpected link attribute value", attr
+            print *, trim(reverseKey_api(attr)) 
+            call util_crashpoint(20987341)
+            !return
+
+        elseif ( (attr >  api_linkf_commonbreak) .and. (attr < api_linkf_typeBreak) ) then
+
+            !% --- for link attributes in the range for for special elements   
+            !%     the link value (integer) tells us other stuff to read in
+            !%
+            !% --- The "attr" input is one of the special element attributes, e.g., type, sub_type
+            !%     First we read in the type so that we can properly categorize the sub_type to read         
+            !print *, 'call BBB'
             call load_api_procedure("api_get_linkf_attribute")
             error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_type, link_value)
             thisposition = trim(subroutine_name)//'_B02'
             call print_api_error(error, thisposition)
+
+            ilink_value = int(link_value) !% the linkf_type is always an integer
+
+            !% 20220420brh
+            !% --- handle the different linkf_type
+            select case (ilink_value)
+
+                case (API_CONDUIT)
+                    select case (attr)
+                        case (api_linkf_type)
+                            link_value = lPipe
+                        case (api_linkf_sub_type)
+                            !% conduits do not have a sub type
+                            link_value = undefinedKey
+                        case default
+                            if (isInt) then
+                                link_value = nullvalueI
+                            else
+                                link_value = nullvalueR
+                            end if
+                            write(*,*)
+                            write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at 45782987'
+                            write(*,*) '   attr = ',attr
+                            write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
+                            write(*,*) '   skipping error condition!'
+                            write(*,*) '******'
+                    end select
+
+                case (API_PUMP)
+                    select case (attr)
+                        case (api_linkf_type)
+                            link_value = lPump
+                        case (api_linkf_sub_type)
+                            !% --- load subtype for pump
+                            !print *, 'call CCC'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
+                            thisposition = trim(subroutine_name)//'_C04'
+
+                            !% --- assign SWMM5+ key for pump subtype
+                            select case (int(link_value))
+                                case (API_TYPE1_PUMP)
+                                    link_value = lType1Pump
+                                case (API_TYPE2_PUMP)
+                                    link_value = lType2Pump
+                                case (API_TYPE3_PUMP)
+                                    link_value = lType3Pump
+                                case (API_TYPE4_PUMP)
+                                    link_value = lType4Pump
+                                case (API_IDEAL_PUMP)
+                                    link_value = lTypeIdealPump
+
+                                case default
+                                    link_value = nullvalueI
+                                    write(*,*)
+                                    write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  442789'
+                                    write(*,*) '   link_value = ',link_value
+                                    write(*,*) '   allowable are ',API_TYPE1_PUMP, API_TYPE2_PUMP, API_TYPE3_PUMP, API_TYPE4_PUMP, API_IDEAL_PUMP
+                                    write(*,*) '   skipping error condition!'
+                                    write(*,*) '******'   
+                            end select
+
+                        case default
+                            link_value = nullvalueI
+                            write(*,*)
+                            write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  8836785'
+                            write(*,*) '   attr = ',attr
+                            write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
+                            write(*,*) '   skipping error condition!'
+                            write(*,*) '******'      
+                    end select
+
+                case (API_ORIFICE)
+                    select case (attr)
+                        case (api_linkf_type)
+                            link_value = lOrifice
+                        case (api_linkf_sub_type)
+                            !% --- load sub_type for orifice
+                            !print *, 'call DDD'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
+                            thisposition = trim(subroutine_name)//'_D05'
+
+                            !% --- assign SWMM5+ key for orifice subtype
+                            select case (int(link_value))
+                                case (API_SIDE_ORIFICE)
+                                    link_value = lSideOrifice
+                                case (API_BOTTOM_ORIFICE)
+                                    link_value = lBottomOrifice 
+                                case default
+                                    link_value = nullvalueI
+                                    write(*,*)
+                                    write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  442789'
+                                    write(*,*) '   link_value = ',link_value
+                                    write(*,*) '   allowable are ',API_SIDE_ORIFICE, API_BOTTOM_ORIFICE
+                                    write(*,*) '   skipping error condition!'
+                                    write(*,*) '******'  
+                            end select
+
+                        case default
+                            link_value = nullvalueI
+                            write(*,*)
+                            write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  9937685'
+                            write(*,*) '   attr = ',attr
+                            write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
+                            write(*,*) '   skipping error condition!'
+                            write(*,*) '******'   
+                    end select
+
+                case (API_WEIR)
+                    select case (attr)
+                        case (api_linkf_type)
+                            link_value = lWeir
+                        case (api_linkf_sub_type)
+                            !% --- load subtype for weir
+                            !print *, 'call EEE'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
+                            thisposition = trim(subroutine_name)//'_E06'
+                            call print_api_error(error, thisposition)
+
+                            !% --- assign SWMM5+ key for weir subtype
+                            select case (int(link_value))
+                                case (API_TRANSVERSE_WEIR)
+                                    link_value = lTransverseWeir
+                                case (API_SIDEFLOW_WEIR)
+                                    link_value = lSideFlowWeir
+                                case (API_VNOTCH_WEIR)
+                                    link_value = lVnotchWeir
+                                case (API_TRAPEZOIDAL_WEIR)
+                                    link_value = lTrapezoidalWeir
+                                case (API_ROADWAY_WEIR)
+                                    link_value = lRoadWayWeir  
+
+                                case default
+                                    link_value = nullvalueI
+                                    write(*,*)
+                                    write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at 620873'
+                                    write(*,*) '   link_value = ',link_value
+                                    write(*,*) '   allowable are ',API_TRANSVERSE_WEIR, API_SIDEFLOW_WEIR, API_VNOTCH_WEIR, API_TRAPEZOIDAL_WEIR, API_ROADWAY_WEIR
+                                    write(*,*) '   skipping error condition!'
+                                    write(*,*) '******' 
+                            end select
+
+                        case default
+                            link_value = nullvalueI
+                            write(*,*)
+                            write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  9937685'
+                            write(*,*) '   attr = ',attr
+                            write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
+                            write(*,*) '   skipping error condition!'
+                            write(*,*) '******'   
+                    end select
+
+                case (API_OUTLET)
+                    select case (attr)
+                        case (api_linkf_type)
+                            link_value = lOutlet
+                        case (api_linkf_sub_type)
+                            !% --- load subtype for outlet
+                            !print *, 'call FFF'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
+                            thisposition = trim(subroutine_name)//'_F06'
+                            call print_api_error(error, thisposition)
+
+                            !% --- assign SWMM5+ key for outlet type
+                            select case (int(link_value))
+                                case (API_NODE_DEPTH)
+                                    link_value = lNodeDepth
+                                case (API_NODE_HEAD)
+                                    link_value = lNodeHead 
+
+                                case default
+                                    link_value = nullvalueI
+                                    write(*,*)
+                                    write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at 220455'
+                                    write(*,*) '   link_value = ',link_value
+                                    write(*,*) '   allowable are ',API_NODE_DEPTH, API_NODE_HEAD
+                                    write(*,*) '   skipping error condition!'
+                                    write(*,*) '******'   
+                            end select
+
+                        case default
+                            link_value = nullvalueI
+                            write(*,*)
+                            write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  11947'
+                            write(*,*) '   attr = ',attr
+                            write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
+                            write(*,*) '   skipping error condition!'
+                            write(*,*) '******' 
+                    end select
+
+                case default
+                    print *, 'CODE ERROR? case default that should not be reached 20220420brh'
+            end select
+            !% 20220420brh
             
-            if (link_value == API_CONDUIT) then
-                if (attr == api_linkf_type) then
-                    link_value = lPipe
-                else if (attr == api_linkf_sub_type) then
-                    !% conduits doesnot have a sub type
-                    link_value = undefinedKey
-                else
-                    link_value = nullvalueI
-                    write(*,*)
-                    write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at 45782987'
-                    write(*,*) '   attr = ',attr
-                    write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
-                    write(*,*) '   skipping error condition!'
-                    write(*,*) '******'
-                end if
+                ! if (link_value == API_CONDUIT) then
+                !     if (attr == api_linkf_type) then
+                !         link_value = lPipe
+                !     else if (attr == api_linkf_sub_type) then
+                !         !% conduits doesnot have a sub type
+                !         link_value = undefinedKey
+                !     else
+                !         link_value = nullvalueI
+                !         write(*,*)
+                !         write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at 45782987'
+                !         write(*,*) '   attr = ',attr
+                !         write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
+                !         write(*,*) '   skipping error condition!'
+                !         write(*,*) '******'
+                !     end if
+                ! else if (ilink_value == API_PUMP) then
+                !     if (attr == api_linkf_type) then
+                !         link_value = lPump
+                !     else if (attr == api_linkf_sub_type) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
+                !         thisposition = trim(subroutine_name)//'_C04'
+                !         if (link_value == API_TYPE1_PUMP) then
+                !             link_value = lType1Pump
+                !         else if (link_value == API_TYPE2_PUMP) then
+                !             link_value = lType2Pump
+                !         else if (link_value == API_TYPE3_PUMP) then
+                !             link_value = lType3Pump
+                !         else if (link_value == API_TYPE4_PUMP) then
+                !             link_value = lType4Pump
+                !         else if (link_value == API_IDEAL_PUMP) then
+                !             link_value = lTypeIdealPump   
+                !         else
+                !             link_value = nullvalueI
+                !             write(*,*)
+                !             write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  442789'
+                !             write(*,*) '   link_value = ',link_value
+                !             write(*,*) '   allowable are ',API_TYPE1_PUMP, API_TYPE2_PUMP, API_TYPE3_PUMP, API_TYPE4_PUMP, API_IDEAL_PUMP
+                !             write(*,*) '   skipping error condition!'
+                !             write(*,*) '******'                     
+                !         endif   
+                !     else
+                !         link_value = nullvalueI
+                !         write(*,*)
+                !         write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  8836785'
+                !         write(*,*) '   attr = ',attr
+                !         write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
+                !         write(*,*) '   skipping error condition!'
+                !         write(*,*) '******'          
+                !     end if
 
-            else if (link_value == API_PUMP) then
-                if (attr == api_linkf_type) then
-                    link_value = lPump
-                else if (attr == api_linkf_sub_type) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
-                    thisposition = trim(subroutine_name)//'_C04'
-                    if (link_value == API_TYPE1_PUMP) then
-                        link_value = lType1Pump
-                    else if (link_value == API_TYPE2_PUMP) then
-                        link_value = lType2Pump
-                    else if (link_value == API_TYPE3_PUMP) then
-                        link_value = lType3Pump
-                    else if (link_value == API_TYPE4_PUMP) then
-                        link_value = lType4Pump
-                    else if (link_value == API_IDEAL_PUMP) then
-                        link_value = lTypeIdealPump   
-                    else
-                        link_value = nullvalueI
-                        write(*,*)
-                        write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  442789'
-                        write(*,*) '   link_value = ',link_value
-                        write(*,*) '   allowable are ',API_TYPE1_PUMP, API_TYPE2_PUMP, API_TYPE3_PUMP, API_TYPE4_PUMP, API_IDEAL_PUMP
-                        write(*,*) '   skipping error condition!'
-                        write(*,*) '******'                     
-                    endif   
-                else
-                    link_value = nullvalueI
-                    write(*,*)
-                    write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  8836785'
-                    write(*,*) '   attr = ',attr
-                    write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
-                    write(*,*) '   skipping error condition!'
-                    write(*,*) '******'          
-                end if
+                ! else if (link_value == API_ORIFICE) then
+                !     if (attr == api_linkf_type) then
+                !         link_value = lOrifice
+                !     else if (attr == api_linkf_sub_type) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
+                !         thisposition = trim(subroutine_name)//'_D05'
+                !         if (link_value == API_SIDE_ORIFICE) then
+                !             link_value = lSideOrifice
+                !         else if (link_value == API_BOTTOM_ORIFICE) then
+                !             link_value = lBottomOrifice  
+                !         else
+                !             link_value = nullvalueI
+                !             write(*,*)
+                !             write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  442789'
+                !             write(*,*) '   link_value = ',link_value
+                !             write(*,*) '   allowable are ',API_SIDE_ORIFICE, API_BOTTOM_ORIFICE
+                !             write(*,*) '   skipping error condition!'
+                !             write(*,*) '******'     
+                !         endif
+                !     else
+                !         link_value = nullvalueI
+                !         write(*,*)
+                !         write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  9937685'
+                !         write(*,*) '   attr = ',attr
+                !         write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
+                !         write(*,*) '   skipping error condition!'
+                !         write(*,*) '******'              
+                !     end if
 
-            else if (link_value == API_ORIFICE) then
-                if (attr == api_linkf_type) then
-                    link_value = lOrifice
-                else if (attr == api_linkf_sub_type) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
-                    thisposition = trim(subroutine_name)//'_D05'
-                    if (link_value == API_SIDE_ORIFICE) then
-                        link_value = lSideOrifice
-                    else if (link_value == API_BOTTOM_ORIFICE) then
-                        link_value = lBottomOrifice  
-                    else
-                        link_value = nullvalueI
-                        write(*,*)
-                        write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  442789'
-                        write(*,*) '   link_value = ',link_value
-                        write(*,*) '   allowable are ',API_SIDE_ORIFICE, API_BOTTOM_ORIFICE
-                        write(*,*) '   skipping error condition!'
-                        write(*,*) '******'     
-                    endif
-                else
-                    link_value = nullvalueI
-                    write(*,*)
-                    write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  9937685'
-                    write(*,*) '   attr = ',attr
-                    write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
-                    write(*,*) '   skipping error condition!'
-                    write(*,*) '******'              
-                end if
+                ! else if (link_value == API_WEIR) then
+                !     if (attr == api_linkf_type) then
+                !         link_value = lWeir
+                !     else if (attr == api_linkf_sub_type) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
+                !         thisposition = trim(subroutine_name)//'_E06'
+                !         call print_api_error(error, thisposition)
+                !         if (link_value == API_TRANSVERSE_WEIR) then
+                !             link_value = lTransverseWeir
+                !         else if (link_value == API_SIDEFLOW_WEIR) then
+                !             link_value = lSideFlowWeir
+                !         else if (link_value == API_VNOTCH_WEIR) then
+                !             link_value = lVnotchWeir
+                !         else if (link_value == API_TRAPEZOIDAL_WEIR) then
+                !             link_value = lTrapezoidalWeir
+                !         else if (link_value == API_ROADWAY_WEIR) then
+                !             link_value = lRoadWayWeir  
+                !         else
+                !             link_value = nullvalueI
+                !             write(*,*)
+                !             write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at 620873'
+                !             write(*,*) '   link_value = ',link_value
+                !             write(*,*) '   allowable are ',API_TRANSVERSE_WEIR, API_SIDEFLOW_WEIR, API_VNOTCH_WEIR, API_TRAPEZOIDAL_WEIR, API_ROADWAY_WEIR
+                !             write(*,*) '   skipping error condition!'
+                !             write(*,*) '******'  
+                !         endif    
+                !     else
+                !         link_value = nullvalueI
+                !         write(*,*)
+                !         write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  9937685'
+                !         write(*,*) '   attr = ',attr
+                !         write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
+                !         write(*,*) '   skipping error condition!'
+                !         write(*,*) '******'   
+                !     end if
 
-            else if (link_value == API_WEIR) then
-                if (attr == api_linkf_type) then
-                    link_value = lWeir
-                else if (attr == api_linkf_sub_type) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
-                    thisposition = trim(subroutine_name)//'_E06'
-                    call print_api_error(error, thisposition)
-                    if (link_value == API_TRANSVERSE_WEIR) then
-                        link_value = lTransverseWeir
-                    else if (link_value == API_SIDEFLOW_WEIR) then
-                        link_value = lSideFlowWeir
-                    else if (link_value == API_VNOTCH_WEIR) then
-                        link_value = lVnotchWeir
-                    else if (link_value == API_TRAPEZOIDAL_WEIR) then
-                        link_value = lTrapezoidalWeir
-                    else if (link_value == API_ROADWAY_WEIR) then
-                        link_value = lRoadWayWeir  
-                    else
-                        link_value = nullvalueI
-                        write(*,*)
-                        write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at 620873'
-                        write(*,*) '   link_value = ',link_value
-                        write(*,*) '   allowable are ',API_TRANSVERSE_WEIR, API_SIDEFLOW_WEIR, API_VNOTCH_WEIR, API_TRAPEZOIDAL_WEIR, API_ROADWAY_WEIR
-                        write(*,*) '   skipping error condition!'
-                        write(*,*) '******'  
-                    endif    
-                else
-                    link_value = nullvalueI
-                    write(*,*)
-                    write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  9937685'
-                    write(*,*) '   attr = ',attr
-                    write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
-                    write(*,*) '   skipping error condition!'
-                    write(*,*) '******'   
-                end if
+                ! else if (link_value == API_OUTLET) then
+                !     if (attr == api_linkf_type) then
+                !         link_value = lOutlet
+                !     else if (attr == api_linkf_sub_type) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
+                !         thisposition = trim(subroutine_name)//'_F06'
+                !         call print_api_error(error, thisposition)
+                !         if (link_value == API_NODE_DEPTH) then
+                !             link_value = lNodeDepth
+                !         else if (link_value == API_NODE_HEAD) then
+                !             link_value = lNodeHead 
+                !         else
+                !             link_value = nullvalueI
+                !             write(*,*)
+                !             write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at 220455'
+                !             write(*,*) '   link_value = ',link_value
+                !             write(*,*) '   allowable are ',API_NODE_DEPTH, API_NODE_HEAD
+                !             write(*,*) '   skipping error condition!'
+                !             write(*,*) '******'                       
+                !         endif
+                !     else
+                !         link_value = nullvalueI
+                !         write(*,*)
+                !         write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  11947'
+                !         write(*,*) '   attr = ',attr
+                !         write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
+                !         write(*,*) '   skipping error condition!'
+                !         write(*,*) '******'     
+                !     end if                
 
-            else if (link_value == API_OUTLET) then
-                if (attr == api_linkf_type) then
-                    link_value = lOutlet
-                else if (attr == api_linkf_sub_type) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_sub_type, link_value)
-                    thisposition = trim(subroutine_name)//'_F06'
-                    call print_api_error(error, thisposition)
-                    if (link_value == API_NODE_DEPTH) then
-                        link_value = lNodeDepth
-                    else if (link_value == API_NODE_HEAD) then
-                        link_value = lNodeHead 
-                    else
-                        link_value = nullvalueI
-                        write(*,*)
-                        write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at 220455'
-                        write(*,*) '   link_value = ',link_value
-                        write(*,*) '   allowable are ',API_NODE_DEPTH, API_NODE_HEAD
-                        write(*,*) '   skipping error condition!'
-                        write(*,*) '******'                       
-                    endif
-                else
-                    link_value = nullvalueI
-                    write(*,*)
-                    write(*,*) '****** Unexpected else in ',trim(subroutine_name),' at  11947'
-                    write(*,*) '   attr = ',attr
-                    write(*,*) '   allowable are ',api_linkf_type, api_linkf_sub_type
-                    write(*,*) '   skipping error condition!'
-                    write(*,*) '******'     
-                end if                
+                ! endif
+            !% 20220422brh
 
-            endif
+           
 
-        else
+        elseif (  attr == api_linkf_typeBreak  ) then
+            !% this should never be called
+            print *, "error: unexpected link attribute value", attr
+            print *, trim(reverseKey_api(attr)) 
+            call util_crashpoint(98273)        
+            !return
+
+        elseif ( (attr > api_linkf_typeBreak)    .and. (attr < api_linkf_end) ) then
+
+            !% --- load the cross-section type no matter what the input attr is.
+            !print *, 'call GGG'
             call load_api_procedure("api_get_linkf_attribute")
             error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_type, link_value)
             thisposition = trim(subroutine_name)//'_E05'
             call print_api_error(error, thisposition)
-            if (link_value == API_RECT_CLOSED) then
-                if (attr == api_linkf_geometry) then
-                    link_value = lRectangular_closed
-                else if (attr == api_linkf_xsect_wMax) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
-                    thisposition = trim(subroutine_name)//'_F06'
-                    call print_api_error(error, thisposition)
-                else if (attr == api_linkf_xsect_yFull) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
-                    thisposition = trim(subroutine_name)//'_G07'
-                    call print_api_error(error, thisposition)
-                else
-                    !% rectangular geometry does not have certain geometric features (i.e. bottom width) 
-                    !% thus, set that link%R column to nullvalueR
-                    link_value = nullvalueR
-                end if
-            else if (link_value == API_RECT_OPEN) then
-                if (attr == api_linkf_geometry) then
-                    link_value = lRectangular
-                else if (attr == api_linkf_xsect_wMax) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
-                    thisposition = trim(subroutine_name)//'_H08'
-                    call print_api_error(error, thisposition)
-                else if (attr == api_linkf_xsect_yFull) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
-                    thisposition = trim(subroutine_name)//'_I09'
-                    call print_api_error(error, thisposition)
-                else
-                    !% rectangular geometry does not have certain geometric features (i.e. bottom width) 
-                    !% thus, set that link%R column to nullvalueR
-                    link_value = nullvalueR
-                end if
-            else if (link_value == API_TRAPEZOIDAL) then
-                if (attr == api_linkf_geometry) then
-                    link_value = lTrapezoidal
-                else if (attr == api_linkf_xsect_wMax) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yBot, link_value)
-                    thisposition = trim(subroutine_name)//'_J10'
-                    call print_api_error(error, thisposition)
-                else if (attr == api_linkf_xsect_yFull) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
-                    thisposition = trim(subroutine_name)//'_K11'
-                    call print_api_error(error, thisposition)
-                else
-                    !% trapezoidal geometry does not have certain geometric features (i.e. top-width) 
-                    !% thus, set that link%R column to nullvalueR
-                    link_value = nullvalueR
-                end if
-            else if (link_value == API_TRIANGULAR) then
-                if (attr == api_linkf_geometry) then
-                    link_value = lTriangular
-                else if (attr == api_linkf_xsect_wMax) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
-                    thisposition = trim(subroutine_name)//'_M12'
-                    call print_api_error(error, thisposition)
-                else if (attr == api_linkf_xsect_yFull) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
-                    thisposition = trim(subroutine_name)//'_N13'
-                    call print_api_error(error, thisposition)
-                else
-                    !% triangular geometry does not have certain geometric features (i.e. bottom width) 
-                    !% thus, set that link%R column to nullvalueR
-                    link_value = nullvalueR
-                end if
-            else if (link_value == API_PARABOLIC) then
-                if (attr == api_linkf_geometry) then
-                    link_value = lParabolic
-                else if (attr == api_linkf_xsect_wMax) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
-                    thisposition = trim(subroutine_name)//'_O14'
-                    call print_api_error(error, thisposition)
-                else if (attr == api_linkf_xsect_yFull) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
-                    thisposition = trim(subroutine_name)//'_P15'
-                    call print_api_error(error, thisposition)
-                else
-                    !% parabolic geometry does not have certain geometric features (i.e. bottom width) 
-                    !% thus, set that link%R column to nullvalueR
-                    link_value = nullvalueR
-                end if
-            else if (link_value == API_CIRCULAR) then
-                if (attr == api_linkf_geometry) then
-                    link_value = lCircular
-                else if (attr == api_linkf_xsect_wMax) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
-                    thisposition = trim(subroutine_name)//'_Q16'
-                    call print_api_error(error, thisposition)
-                else if (attr == api_linkf_xsect_yFull) then
-                    call load_api_procedure("api_get_linkf_attribute")
-                    error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
-                    thisposition = trim(subroutine_name)//'_R17'
-                    call print_api_error(error, thisposition)
-                else
-                    !% circular geometry does not have certain geometric features (i.e. bottom width) 
-                    !% thus, set that link%R column to nullvalueR
-                    link_value = nullvalueR
-                end if
-            else
-                !% some links like pumps or outlets does not have any geometric features
-                !% thus, link%R geometry columns (i.e. fulldepth, width) will be set to nullvalueR
-                link_value = nullvalueR
-            end if
+
+            !print *, 'attr ',attr, trim(reverseKey_api(attr))
+            !print *, 'link_value ',link_value
+            !print *, 'error ',error
+
+            !% 20220420brh
+            ilink_value = int(link_value) !% these attributes should be integers
+            select case (ilink_value)
+
+                case (API_CIRCULAR)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                            link_value = lCircular
+                        case (api_linkf_xsect_wMax)
+                            !print *, 'call HHH'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
+                            thisposition = trim(subroutine_name)//'_Q16'
+                            call print_api_error(error, thisposition)
+                        case (api_linkf_xsect_yFull)
+                            !print *, 'call III'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                            thisposition = trim(subroutine_name)//'_R17'
+                            call print_api_error(error, thisposition)
+                        case default
+                            !% circular geometry does not have certain geometric features (i.e. bottom width) 
+                            if (isInt) then
+                                link_value = nullvalueI
+                            else
+                                link_value = nullvalueR
+                            end if
+                    end select
+
+                case (API_FILLED_CIRCULAR)
+                    print *, 'CODE ERROR:  geometry not handled yet'
+                    call util_crashpoint(448973)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_RECT_CLOSED)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                            link_value = lRectangular_closed
+                        case (api_linkf_xsect_wMax)
+                            !print *, 'calling JJJ'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
+                            thisposition = trim(subroutine_name)//'_F06'
+                            call print_api_error(error, thisposition)
+                        case (api_linkf_xsect_yFull)
+                            !print *, 'calling KKK'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                            thisposition = trim(subroutine_name)//'_G07'
+                            call print_api_error(error, thisposition)
+                        case default
+                            !% rectangular geometry does not have certain geometric features (i.e. bottom width) 
+                            if (isInt) then
+                                link_value = nullvalueI
+                            else
+                                link_value = nullvalueR
+                            end if
+                    end select
+
+                case (API_RECT_OPEN)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                            link_value = lRectangular
+                        case (api_linkf_xsect_wMax)
+                            !print *, 'calling LLL'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
+                            thisposition = trim(subroutine_name)//'_H08'
+                            call print_api_error(error, thisposition)
+                        case (api_linkf_xsect_yFull)
+                            !print *, 'calling MMM'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                            thisposition = trim(subroutine_name)//'_I09'
+                            call print_api_error(error, thisposition)
+                        case default
+                            !% rectangular geometry does not have certain geometric features (i.e. bottom width) 
+                            if (isInt) then
+                                link_value = nullvalueI
+                            else
+                                link_value = nullvalueR
+                            end if
+                    end select
+
+                case (API_TRAPEZOIDAL)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                            link_value = lTrapezoidal
+                        case (api_linkf_xsect_wMax)
+                            !print *, 'calling NNN'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yBot, link_value)
+                            thisposition = trim(subroutine_name)//'_J10'
+                            call print_api_error(error, thisposition)
+                        case (api_linkf_xsect_yFull)
+                            !print *, 'calling OOO'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                            thisposition = trim(subroutine_name)//'_K11'
+                            call print_api_error(error, thisposition)
+                        case default
+                            !% trapezoidal geometry does not have certain geometric features (i.e. top-width) 
+                            if (isInt) then
+                                link_value = nullvalueI
+                            else
+                                link_value = nullvalueR
+                            end if
+                    end select
+
+                case (API_TRIANGULAR)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                            link_value = lTriangular
+                        case (api_linkf_xsect_wMax)
+                            !print *, 'calling PPP'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
+                            thisposition = trim(subroutine_name)//'_M12'
+                            call print_api_error(error, thisposition)
+                        case (api_linkf_xsect_yFull)
+                            !print *, 'calling QQQ'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                            thisposition = trim(subroutine_name)//'_N13'
+                            call print_api_error(error, thisposition)
+                        case default
+                            !% triangular geometry does not have certain geometric features (i.e. bottom width) 
+                            if (isInt) then
+                                link_value = nullvalueI
+                            else
+                                link_value = nullvalueR
+                            end if
+                    end select
+
+                case (API_PARABOLIC)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                            link_value = lParabolic
+                        case (api_linkf_xsect_wMax)
+                            !print *, 'calling RRR'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
+                            thisposition = trim(subroutine_name)//'_O14'
+                            call print_api_error(error, thisposition)
+                        case (api_linkf_xsect_yFull)
+                            !print *, 'calling SSS'
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                            thisposition = trim(subroutine_name)//'_P15'
+                            call print_api_error(error, thisposition)
+                        case default
+                            !% parabolic geometry does not have certain geometric features (i.e. bottom width) 
+                            if (isInt) then
+                                link_value = nullvalueI
+                            else
+                                link_value = nullvalueR
+                            end if
+                    end select
+
+                case (API_POWERFUNC)
+                    print *, 'CODE ERROR: API_POWERFUNC geometry not handled yet'
+                    call util_crashpoint(398472)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_RECT_TRIANG)
+                    print *, 'CODE ERROR: API_RECT_TRIANG geometry not handled yet'
+                    call util_crashpoint(68743)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_RECT_ROUND)
+                    print *, 'CODE ERROR: API_RECT_ROUND geometry not handled yet'
+                    call util_crashpoint(2298744)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_MOD_BASKET)
+                    print *, 'CODE ERROR: API_MOD_BASKET geometry not handled yet'
+                    call util_crashpoint(83789)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_HORIZ_ELLIPSE)
+                    print *, 'CODE ERROR: API_HORIZ_ELLIPSE geometry not handled yet'
+                    call util_crashpoint(993782)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_VERT_ELLIPSE)
+                    print *, 'CODE ERROR: API_VERT_ELLIPSE geometry not handled yet'
+                    call util_crashpoint(11847)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_ARCH)
+                    print *, 'CODE ERROR :API_ARCH geometry not handled yet'
+                    call util_crashpoint(598273)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_EGGSHAPED)
+                    print *, 'CODE ERROR: API_EGGSHAPED geometry not handled yet'
+                    call util_crashpoint(927633)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_HORSESHOE)
+                    print *, 'CODE ERROR:API_HORSESHOE  geometry not handled yet'
+                    call util_crashpoint(77363)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_GOTHIC)
+                    print *, 'CODE ERROR: API_GOTHIC geometry not handled yet'
+                    call util_crashpoint(33382)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_CATENARY)
+                    print *, 'CODE ERROR: API_CATENARY geometry not handled yet'
+                    call util_crashpoint(387833)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_SEMIELLIPTICAL)
+                    print *, 'CODE ERROR: API_SEMIELLIPTICAL geometry not handled yet'
+                    call util_crashpoint(87574)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_BASKETHANDLE)
+                    print *, 'CODE ERROR: API_BASKETHANDLE geometry not handled yet'
+                    call util_crashpoint(76673)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_SEMICIRCULAR)
+                    print *, 'CODE ERROR: API_SEMICIRCULAR geometry not handled yet'
+                    call util_crashpoint(199173)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_IRREGULAR)
+                    select case (attr)
+                    case (api_linkf_geometry)
+                        link_value = lIrregular
+                    case (api_linkf_transectidx)
+                        !% --- load the transect ID
+                       ! print *, 'calling TTT'
+                        call load_api_procedure("api_get_linkf_attribute")
+                        error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_transectidx, link_value)
+                        thisposition = trim(subroutine_name)//'_Q16'
+                        call print_api_error(error, thisposition)
+                        !% increment by 1 because C indexes start at 0
+                        link_value = link_value + 1
+                        !print *, 'in irregular, link_value = ',link_value
+                    case default
+                        !% irregular geometry does not have certain geometric features (i.e. bottom width) 
+                        if (isInt) then
+                            link_value = nullvalueI
+                        else
+                            link_value = nullvalueR
+                        end if
+                    end select
+                case (API_CUSTOM)
+                    print *, 'CODE ERROR: API_CUSTOM geometry not handled yet'
+                    call util_crashpoint(298733)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+
+                case (API_FORCE_MAIN)
+                    print *, 'CODE ERROR: API_FORCE_MAIN geometry not handled yet'
+                    call util_crashpoint(4767823)
+                    select case (attr)
+                        case (api_linkf_geometry)
+                        case (api_linkf_xsect_wMax)
+                        case (api_linkf_xsect_yFull)
+                        case default
+                    end select
+                case default
+                    print *, 'in else ',link_value
+                        !% some links like pumps or outlets does not have any geometric features
+                        !% thus, link%R geometry columns (i.e. fulldepth, width) will be set to nullvalueR
+                        link_value = nullvalueR
+                        print *, 'after ',link_value
+            end select
+            !% 20220420brh
+
+                ! if (link_value == API_RECT_CLOSED) then
+                !     if (attr == api_linkf_geometry) then
+                !         link_value = lRectangular_closed
+                !     else if (attr == api_linkf_xsect_wMax) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
+                !         thisposition = trim(subroutine_name)//'_F06'
+                !         call print_api_error(error, thisposition)
+                !     else if (attr == api_linkf_xsect_yFull) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                !         thisposition = trim(subroutine_name)//'_G07'
+                !         call print_api_error(error, thisposition)
+                !     else
+                !         !% rectangular geometry does not have certain geometric features (i.e. bottom width) 
+                !         !% thus, set that link%R column to nullvalueR
+                !         link_value = nullvalueR
+                !     end if
+                ! else if (link_value == API_RECT_OPEN) then
+                !     if (attr == api_linkf_geometry) then
+                !         link_value = lRectangular
+                !     else if (attr == api_linkf_xsect_wMax) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
+                !         thisposition = trim(subroutine_name)//'_H08'
+                !         call print_api_error(error, thisposition)
+                !     else if (attr == api_linkf_xsect_yFull) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                !         thisposition = trim(subroutine_name)//'_I09'
+                !         call print_api_error(error, thisposition)
+                !     else
+                !         !% rectangular geometry does not have certain geometric features (i.e. bottom width) 
+                !         !% thus, set that link%R column to nullvalueR
+                !         link_value = nullvalueR
+                !     end if
+                ! else if (link_value == API_TRAPEZOIDAL) then
+                !     if (attr == api_linkf_geometry) then
+                !         link_value = lTrapezoidal
+                !     else if (attr == api_linkf_xsect_wMax) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yBot, link_value)
+                !         thisposition = trim(subroutine_name)//'_J10'
+                !         call print_api_error(error, thisposition)
+                !     else if (attr == api_linkf_xsect_yFull) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                !         thisposition = trim(subroutine_name)//'_K11'
+                !         call print_api_error(error, thisposition)
+                !     else
+                !         !% trapezoidal geometry does not have certain geometric features (i.e. top-width) 
+                !         !% thus, set that link%R column to nullvalueR
+                !         link_value = nullvalueR
+                !     end if
+                ! else if (link_value == API_TRIANGULAR) then
+                !     if (attr == api_linkf_geometry) then
+                !         link_value = lTriangular
+                !     else if (attr == api_linkf_xsect_wMax) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
+                !         thisposition = trim(subroutine_name)//'_M12'
+                !         call print_api_error(error, thisposition)
+                !     else if (attr == api_linkf_xsect_yFull) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                !         thisposition = trim(subroutine_name)//'_N13'
+                !         call print_api_error(error, thisposition)
+                !     else
+                !         !% triangular geometry does not have certain geometric features (i.e. bottom width) 
+                !         !% thus, set that link%R column to nullvalueR
+                !         link_value = nullvalueR
+                !     end if
+                ! else if (link_value == API_PARABOLIC) then
+                !     if (attr == api_linkf_geometry) then
+                !         link_value = lParabolic
+                !     else if (attr == api_linkf_xsect_wMax) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
+                !         thisposition = trim(subroutine_name)//'_O14'
+                !         call print_api_error(error, thisposition)
+                !     else if (attr == api_linkf_xsect_yFull) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                !         thisposition = trim(subroutine_name)//'_P15'
+                !         call print_api_error(error, thisposition)
+                !     else
+                !         !% parabolic geometry does not have certain geometric features (i.e. bottom width) 
+                !         !% thus, set that link%R column to nullvalueR
+                !         link_value = nullvalueR
+                !     end if
+                ! else if (link_value == API_CIRCULAR) then
+                !     if (attr == api_linkf_geometry) then
+                !         link_value = lCircular
+                !     else if (attr == api_linkf_xsect_wMax) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
+                !         thisposition = trim(subroutine_name)//'_Q16'
+                !         call print_api_error(error, thisposition)
+                !     else if (attr == api_linkf_xsect_yFull) then
+                !         call load_api_procedure("api_get_linkf_attribute")
+                !         error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                !         thisposition = trim(subroutine_name)//'_R17'
+                !         call print_api_error(error, thisposition)
+                !     else
+                !         !% circular geometry does not have certain geometric features (i.e. bottom width) 
+                !         !% thus, set that link%R column to nullvalueR
+                !         link_value = nullvalueR
+                !     end if
+                ! else
+                !     print *, 'in else ',link_value
+                !     !% some links like pumps or outlets does not have any geometric features
+                !     !% thus, link%R geometry columns (i.e. fulldepth, width) will be set to nullvalueR
+                !     link_value = nullvalueR
+                !     print *, 'after ',link_value
+                ! end if
+            !% 20220421brh
+
+        else
+            !% this should never be reached
+            print *, "error: unexpected link attribute value", attr
+            print *, trim(reverseKey_api(attr)) 
+            call util_crashpoint(878293)    
+            !return         
         end if
+
         if (setting%Debug%File%interface)  then
             write(*,"(3(A,i5),A)") '*** leave ' // trim(subroutine_name) // &
             "(link_idx=", link_idx, ", attr=", attr, ")" // " [Processor ", this_image(), "]"
@@ -1394,69 +2005,104 @@ contains
 !%=============================================================================
 !%=============================================================================
 !%
-    function interface_get_next_inflow_time(bc_idx, tnow) result(tnext)
+    function interface_get_next_inflow_time(bc_idx, tnow, timemaxEpoch) result(tnext)
         !%---------------------------------------------------------------------
         !% Description:
+        !% Gets the next inflow time. If the next time is less than the maximum
+        !% time (timemax) then the Tseries.x1 and .y1 stored values will be changed
+        !% to the new value.
+        !% NOTE: timemax is the "Epoch" time used in EPA-SWMM, but the
+        !% output from this is local time with time=0 as the start of the simulation
+        !%
         !%---------------------------------------------------------------------
-        integer, intent(in) :: bc_idx
-        real(8), intent(in) :: tnow
-        real(8)             :: tnext, t1, t2, tnextp
-        integer             :: nidx, nres, tseries, success
-        character(64) :: subroutine_name 
+        !% Declarations:
+            integer, intent(in) :: bc_idx
+            real(8), intent(in) :: tnow, timemaxEpoch
+            real(8)             :: tnext, t1, t2, tnextp
+            integer             :: tseries_idx, success
+            integer             :: year, month, day, hours, minutes, seconds
+            integer, pointer    :: nidx, nres
+            character(64) :: subroutine_name = 'interface_get_next_inflow_time'
         !%---------------------------------------------------------------------
-        subroutine_name = 'interface_get_next_inflow_time'
-        if (setting%Debug%File%interface)  &
-            write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
-
-        nidx = BC%flowI(bc_idx, bi_node_idx)
+        !% Preliminaries:
+            if (setting%Debug%File%interface)  &
+                write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
+        !%---------------------------------------------------------------------
+        !% Aliases:
+            !% --- node index for this BC
+            nidx => BC%flowI(bc_idx, bi_node_idx)
+            !% --- get node pattern resolution
+            nres => node%I(nidx, ni_pattern_resolution)
+        !%---------------------------------------------------------------------
+        !% --- consistency checking
         if (.not. node%YN(nidx, nYN_has_inflow)) then
             print *, "Error, node " // node%Names(nidx)%str // " does not have an inflow"
         end if
-        nres = node%I(nidx, ni_pattern_resolution)
+
         if (nres >= 0) then
+            !% --- get the next time for pattern resolution
+            !%     Note that nres=0 returns nullvalueR
             tnextp = util_datetime_get_next_time(tnow, nres)
+
             if (node%YN(nidx, nYN_has_extInflow)) then
-                tseries = interface_get_nodef_attribute(nidx, api_nodef_extInflow_tSeries)
-                if (tseries >= 0) then
-                    success = get_next_entry_tseries(tseries)
-                    tnext = interface_get_nodef_attribute(nidx, api_nodef_extInflow_tSeries_x1)
-                    tnext = util_datetime_epoch_to_secs(tnext)
-                    if (success == 0) then ! unsuccessful
+                !% --- for external inflows (file), get the timeseries index
+                tseries_idx = interface_get_nodef_attribute(nidx, api_nodef_extInflow_tSeries)
+
+               !print *, 'node_idx, tseries_idx',nidx,tseries_idx
+               !print *, 'tnow, tmaxeppoch ',tnow/3600.0, timemaxEpoch
+
+                if (tseries_idx >= 0) then
+                    !% --- this gets the Tseries.x2 values
+                    !%     Note the Tseries.x1 values will be overwritten by the .x2 values
+                    !%     only if the x2 value is less than timemax. This prepares for the
+                    !%     the next step of storing for SWMM5+
+                    success = get_next_entry_tseries(tseries_idx, timemaxEpoch)
+
+                    if (success == 1) then
+                        !% --- gets time in days at what is now the x2 pointer 
                         tnext = interface_get_nodef_attribute(nidx, api_nodef_extInflow_tSeries_x2)
+                        !tnext = interface_get_nodef_attribute(nidx, api_nodef_extInflow_tSeries_x1) 20220604brh
+                        !print *, 'tnext Flow out of interface ',tnext
+
                         tnext = util_datetime_epoch_to_secs(tnext)
-                        if (tnext == tnow) then
-                            tnext = setting%Time%End
-                            setting%BC%disableInterpolationYN = .true.
-                        !% brh20211207s
-                        else
-                            ! write(*,*)
-                            ! write(*,*) '****** Unexpected else in ',subroutine_name,' at 4479823'
-                            ! write(*,*) '   tnext = ', tnext
-                            ! write(*,*) '   tnow  = ', tnow
-                            ! write(*,*) '   skipping error condition'
-                            ! write(*,*) '******'
-                            ! stop 
-                            !call util_crashpoint( 4479823)
-                        !% brh20211207e    
-                        end if
-                    !% brh20211207s
+                        !print *, 'tnext Flow',tnext /3600.0
                     else
-                        ! write(*,*)
-                        ! write(*,*) '****** Unexpected else in ',subroutine_name,' at 4589709'
-                        ! write(*,*) '   success = ', success
-                        ! write(*,*) '   skipping error condition'
-                        ! write(*,*) '******'
-                        ! stop 
-                        !call util_crashpoint( 4589709)
-                    !% brh20211207e                          
+                        !% --- failure to read time later than tnow from file
+                        print *, ' '
+                        write(*,"(A)") 'INPUT FILE FAILURE'
+                        write(*,"(A,f12.0,A)") 'Input file reader cannot find time past ',tnow /3600.d0, ' hours'
+                        tnext = util_datetime_secs_to_epoch(tnow)
+                        call util_datetime_decodedate(tnext, year, month, day)
+                        call util_datetime_decodetime(tnext, hours, minutes, seconds)
+                        write(*,"(A,i4,a,i2,a,i2,a,i2,a,i2)") 'or date ',year,'-',month,'-',day,' at ',hours,':',minutes
+                        tnext = util_datetime_epoch_to_secs(timemaxEpoch)
+                        write(*,"(A,f12.0,A)")  'Note that simulation end time is ',tnext/3600.d0,' hours'
+                        call util_datetime_decodedate(timemaxEpoch, year, month, day)
+                        call util_datetime_decodetime(timemaxEpoch, hours, minutes, seconds)
+                        write(*,"(A,i4,a,i2,a,i2,a,i2,a,i2)") 'or date ',year,'-',month,'-',day,' at ',hours,':',minutes
+                        write(*,"(A)") 'The input file must have a data up through the end of the simulation period.'
+                        print *, ' '
+                        
+                        call util_crashpoint(2098734)
+                        !stop 2098734
                     end if
                 else
+                    !% --- if no external file, use the end time
+                    !% HACK -- what are we doing here?
                     tnext = setting%Time%End
                 end if
+            else
+                !% --- continue, no action if there isn't an external inflow    
             end if
+            !% --- the next time is the smaller of the value in the the timeseries or
+            !%     the time associated with the pattern.
+            !%     HACK -- NEED TO CHECK PATTERN OPERATION
             tnext = min(tnext, tnextp)
         else
+            !% --- HACK - if pattern resolution < 0 then set output tnext to the end time.
+            !% SHOULD THIS BE A FAILURE POINT?
             tnext = setting%Time%End
+            call util_crashpoint(2390483)
         end if
 
         if (setting%Debug%File%interface)  &
@@ -1466,29 +2112,93 @@ contains
 !%=============================================================================
 !%=============================================================================
 !%
-    function interface_get_next_head_time(bc_idx, tnow) result(tnext)
+    function interface_get_next_head_time(bc_idx, tnow, timemaxEpoch) result(tnext)
         !%---------------------------------------------------------------------
         !% Description
+         !% Gets the next  headtime. If the next time is less than the maximum
+        !% time (timemax) then the Tseries.x1 and .y1 stored values will be changed
+        !% to the new value.
+        !% NOTE: timemax is the "Epoch" time used in EPA-SWMM, but the
+        !% output from this is local time with time=0 as the start of the simulation
         !%---------------------------------------------------------------------
-        integer, intent(in) :: bc_idx
-        real(8), intent(in) :: tnow
-        real(8)             :: tnext, tnextp
-        integer             :: nidx, nres, tseries
-        character(64) :: subroutine_name
+            integer, intent(in) :: bc_idx
+            real(8), intent(in) :: tnow, timemaxEpoch
+            real(8)             :: tnext, t1, t2, tnextp
+            integer             :: tseries_idx, success
+            integer             :: year, month, day, hours, minutes, seconds
+            integer, pointer    :: nidx
+            character(64) :: subroutine_name = 'interface_get_next_head_time'
         !%---------------------------------------------------------------------
-        subroutine_name = 'interface_get_next_head_time'
-        if (setting%Debug%File%interface)  &
-            write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
+        !% Preliminaries
+            if (setting%Debug%File%interface)  &
+                write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
+        !%---------------------------------------------------------------------    
+        !% Aliases
+            nidx => BC%headI(bc_idx, bi_node_idx)
+        !%---------------------------------------------------------------------
+        ! if (BC%headI(bc_idx, bi_subcategory) == BCH_fixed) then
+        !     tnext = setting%Time%End
+        ! else
+        !     print *, "Error, unsupported head boundary condition for node " // trim(node%Names(nidx)%str)
+        !     !stop 
+        !     call util_crashpoint(42987)
+        !     !return
+        ! end if
 
-        nidx = BC%headI(bc_idx, bi_node_idx)
-        if (BC%headI(bc_idx, bi_subcategory) == BCH_fixed) then
-            tnext = setting%Time%End
-        else
-            print *, "Error, unsupported head boundary condition for node " // node%Names(nidx)%str
-            !stop 
-            call util_crashpoint(42987)
+        select case (BC%headI(bc_idx, bi_subcategory))  
+        case (BCH_fixed, BCH_normal, BCH_free) 
+            !% --- these cases should not be here!
             return
-        end if
+        case (BCH_tseries)
+            !% --- get the timeseries index
+            tseries_idx = interface_get_nodef_attribute(nidx, api_nodef_head_tSeries)
+            if (tseries_idx >= 0) then
+                !% --- this gets the Tseries.x2 values
+                !%     Note the Tseries.x1 values will be overwritten by the .x2 values
+                !%     only if the x2 value is less than timemax. This prepares for the
+                !%     the next step of storing for SWMM5+
+                success = get_next_entry_tseries(tseries_idx, timemaxEpoch)
+
+                if (success == 1) then
+                    !% --- gets time in days at what is now the x2 pointer 
+                    tnext = interface_get_nodef_attribute(nidx, api_nodef_head_tSeries_x2)
+                    !tnext = interface_get_nodef_attribute(nidx, api_nodef_extInflow_tSeries_x1) 20220604brh
+                    !print *, 'tnext Head out of interface ',tnext
+
+                    tnext = util_datetime_epoch_to_secs(tnext)
+                    !print *, 'tnext Head',tnext /3600.0
+                else
+                    !% --- failure to read time later than tnow from file
+                    print *, ' '
+                    write(*,"(A)") 'INPUT FILE FAILURE'
+                    write(*,"(A,f12.0,A)") 'Input file reader cannot find time past ',tnow /3600.d0, ' hours'
+                    tnext = util_datetime_secs_to_epoch(tnow)
+                    call util_datetime_decodedate(tnext, year, month, day)
+                    call util_datetime_decodetime(tnext, hours, minutes, seconds)
+                    write(*,"(A,i4,a,i2,a,i2,a,i2,a,i2)") 'or date ',year,'-',month,'-',day,' at ',hours,':',minutes
+                    tnext = util_datetime_epoch_to_secs(timemaxEpoch)
+                    write(*,"(A,f12.0,A)")  'Note that simulation end time is ',tnext/3600.d0,' hours'
+                    call util_datetime_decodedate(timemaxEpoch, year, month, day)
+                    call util_datetime_decodetime(timemaxEpoch, hours, minutes, seconds)
+                    write(*,"(A,i4,a,i2,a,i2,a,i2,a,i2)") 'or date ',year,'-',month,'-',day,' at ',hours,':',minutes
+                    write(*,"(A)") 'The input file must have a data up through the end of the simulation period.'
+                    print *, ' '
+                    
+                    call util_crashpoint(609834)
+                end if
+            else
+                !% --- if no external file, use the end time
+                !% HACK -- what are we doing here? Should this be an error condition?
+                tnext = setting%Time%End
+            end if
+        case (BCH_tidal)
+            print *, 'CODE ERROR: tidal outfall not yet handled'
+            call util_crashpoint(446929)
+        case default
+            print *, BC%headI(bc_idx, bi_subcategory), trim(reverseKey(BC%headI(bc_idx, bi_subcategory)))
+            print *, 'CODE ERROR: unexpected case default'
+            call util_crashpoint(44822)
+        end select
 
         if (setting%Debug%File%interface)  &
             write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
@@ -2188,11 +2898,12 @@ contains
 !%=============================================================================
 !%=============================================================================
 !%
-    function get_next_entry_tseries(k) result(success)
+    function get_next_entry_tseries(tseries_idx,timemax) result(success)
         !%---------------------------------------------------------------------
         !% Description:
         !%---------------------------------------------------------------------
-        integer, intent(in   ) :: k
+        integer, intent(in   ) :: tseries_idx
+        real(8), intent(in   ) :: timemax
         integer                :: success
         character(64)          :: subroutine_name
         !%---------------------------------------------------------------------
@@ -2201,7 +2912,7 @@ contains
             write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
 
         call load_api_procedure("api_get_next_entry_tseries")
-        success = ptr_api_get_next_entry_tseries(k-1) ! Fortran to C convention
+        success = ptr_api_get_next_entry_tseries(tseries_idx-1,timemax) ! Fortran to C convention
 
         if (setting%Debug%File%interface)  &
             write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"

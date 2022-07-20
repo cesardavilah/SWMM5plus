@@ -10,7 +10,7 @@ module runge_kutta2
     use pack_mask_arrays, only: pack_small_and_zero_depth_elements
     use adjust
     use diagnostic_elements
-    use utility, only: util_CLprint
+    use utility
     use utility_crash
 
     implicit none
@@ -743,7 +743,7 @@ module runge_kutta2
         !%-----------------------------------------------------------------------------
         integer, intent(in) :: whichTM
         integer, pointer    :: thisCol, Npack, thisP(:), SlotMethod, fUp(:), fDn(:)
-        real(8), pointer    :: PNumber(:), fPNumber(:)
+        real(8), pointer    :: PNumber(:), fPNumber(:), Vvalue(:)
 
         character(64) :: subroutine_name = 'rk2_update_preissmann_number'
         !%-----------------------------------------------------------------------------
@@ -769,6 +769,8 @@ module runge_kutta2
             !% pointer to necessary settings struct
             SlotMethod => setting%PreissmannSlot%PreissmannSlotMethod
 
+            Vvalue     => elemR(:,er_Temp01)
+
             select case (SlotMethod)
 
             case (StaticSlot)
@@ -780,7 +782,10 @@ module runge_kutta2
                     thisP => elemP(1:Npack,thisCol)
                     !% get a new decreased preissmann number for the next time step
                     ! PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
-                    PNumber(thisP) = PNumber(thisP) ** 1.0 - log(PNumber(thisP))
+                    where (elemYN(thisP,eYN_isSlot))
+                        ! PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
+                        PNumber(thisP) = max(PNumber(thisP) ** 1.0 - log(PNumber(thisP)), oneR)
+                    endwhere
                     !% update all faces
                     call face_interpolation(fp_all,dummy)
                     !% update the preissmann number from using simple face interpolation

@@ -6,6 +6,7 @@ module weir_elements
     use define_settings, only: setting
     use common_elements
     use adjust
+    use utility_crash, only: util_crashpoint
 
     !%----------------------------------------------------------------------------- 
     !% Description:
@@ -38,7 +39,10 @@ module weir_elements
             write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
         !%-----------------------------------------------------------------------------
         isSurcharged => elemYN(eIdx,eYN_isSurcharged)
-        !%  
+
+        !% --- set the Setting for the fractional open
+        call weir_set_setting (eIdx) 
+
         !% get the flow direction and element head
         call  common_head_and_flowdirection_singular &
             (eIdx, esr_Weir_Zcrest, esr_Weir_NominalDownstreamHead, esi_Weir_FlowDirection)
@@ -61,7 +65,31 @@ module weir_elements
         
         if (setting%Debug%File%weir_elements)  &
             write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
-    end subroutine weir_toplevel    
+    end subroutine weir_toplevel 
+!%
+!%==========================================================================
+!%==========================================================================   
+!%
+    subroutine weir_set_setting (eIdx)
+        !%------------------------------------------------------------------
+        !% Description:
+        !% adjusts weir values for 0 <= er_setting <= 1.0
+        !% patterned after EPA-SWMM link.c/weir_setSetting
+        !%------------------------------------------------------------------
+        !% Declarations:
+            integer, intent(in) :: eIdx
+        !%------------------------------------------------------------------
+        !% --- instantaneous adjustment
+        elemR(eIdx,er_Setting) = elemR(eIdx,er_TargetSetting)
+
+        !% --- error check
+        !%     EPA-SWMM allows the weir setting to be between 0.0 and 1.0
+        if (.not. ((elemR(eIdx,er_Setting) .ge. 0.0) .and. (elemR(eIdx,er_Setting) .le. 1.0))) then
+            print *, 'CODE ERROR: orifice element has er_Setting that is not between 0.0 and 1.0'
+            call util_crashpoint(668723)
+        end if
+
+    end subroutine weir_set_setting   
 !%
 !%==========================================================================
 !% PRIVATE
@@ -78,7 +106,7 @@ module weir_elements
         logical, pointer :: CanSurcharge, IsSurcharged
         real(8) :: Zmidpt
         !%-----------------------------------------------------------------------------
-        if (crashYN) return
+        !if (crashYN) return
         !% input
         Head   => elemR(eIdx,er_Head)
         !% output
@@ -124,7 +152,7 @@ module weir_elements
         real(8), pointer :: Flowrate, EffectiveFullDepth, EffectiveHeadDelta
         real(8) :: CoeffOrifice
         !%-----------------------------------------------------------------------------
-        if (crashYN) return
+        !if (crashYN) return
         FlowDirection      => elemSI(eIdx,esi_Weir_FlowDirection)
         Flowrate           => elemR(eIdx,er_Flowrate) 
         EffectiveFullDepth => elemSR(eIdx,esr_Weir_EffectiveFullDepth)
@@ -162,7 +190,7 @@ module weir_elements
         real(8) :: Zmidpt, CrestLength, SubCorrectionTriangular, SubCorrectionRectangular
         real(8) :: ratio
         !%-----------------------------------------------------------------------------
-        if (crashYN) return
+        !if (crashYN) return
         SpecificWeirType => elemSI(eIdx,esi_Weir_SpecificType)
         EndContractions  => elemSI(eIdx,esi_Weir_EndContractions)
         FlowDirection    => elemSI(eIdx,esi_Weir_FlowDirection)
@@ -176,14 +204,14 @@ module weir_elements
         TriangularSideSlope   => elemSR(eIdx,esr_Weir_TriangularSideSlope)
         TrapezoidalLeftSlope  => elemSR(eIdx,esr_Weir_TrapezoidalLeftSlope)
         TrapezoidalRightSlope => elemSR(eIdx,esr_Weir_TrapezoidalRightSlope)
-        CoeffTriangular       => elemSR(eIdx,esr_Weir_TriangularCoeff)
-        CoeffRectangular      => elemSR(eIdx,esr_Weir_RectangularCoeff)
+        CoeffTriangular       => elemSR(eIdx,esr_Weir_Triangular)
+        CoeffRectangular      => elemSR(eIdx,esr_Weir_Rectangular)
         NominalDsHead         => elemSR(eIdx,esr_Weir_NominalDownstreamHead)
         !%-----------------------------------------------------------------------------
         !% initializing default local Villemonte submergence correction factors as 1
         !% These are changed below if needed
         SubCorrectionTriangular = oneR
-        SubCorrectionRectangular = oneR
+        SubCorrectionRectangular = oneR        
     
         select case (SpecificWeirType)
         case (transverse_weir)
@@ -202,7 +230,7 @@ module weir_elements
             endif
 
             Flowrate = real(FlowDirection,8) * SubCorrectionRectangular * CrestLength * &
-                    CoeffRectangular  * (EffectiveHeadDelta ** WeirExponent)
+                    CoeffRectangular  * (EffectiveHeadDelta ** WeirExponent)       
 
         case (side_flow)
             WeirExponent          => Setting%Weir%SideFlow%WeirExponent
@@ -311,25 +339,24 @@ module weir_elements
         !%-----------------------------------------------------------------------------
         if (crashYN) return
         SpecificWeirType => elemSI(eIdx,esi_Weir_SpecificType)
-
-        Head        => elemR(eIdx,er_Head)
-        Length      => elemR(eIdx,er_Length)
-        Zbottom     => elemR(eIdx,er_Zbottom)
-        Depth       => elemR(eIdx,er_Depth)
         Area        => elemR(eIdx,er_Area)
-        Volume      => elemR(eIdx,er_Volume)
-        Topwidth    => elemR(eIdx,er_Topwidth)
-        Perimeter   => elemR(eIdx,er_Perimeter)
+        Depth       => elemR(eIdx,er_Depth)
+        ell         => elemR(eIdx,er_ell)
+        Head        => elemR(eIdx,er_Head)
         HydDepth    => elemR(eIdx,er_HydDepth)
-        ell         => elemR(eIdx,er_ell) !
         HydRadius   => elemR(eIdx,er_HydRadius)
-        Zcrest                  => elemSR(eIdx,esr_Weir_Zcrest)
-        Zcrown                  => elemSR(eIdx,esr_Weir_Zcrown)
+        Length      => elemR(eIdx,er_Length)
+        Perimeter   => elemR(eIdx,er_Perimeter)
+        Topwidth    => elemR(eIdx,er_Topwidth)
+        Volume      => elemR(eIdx,er_Volume)
+        Zbottom     => elemR(eIdx,er_Zbottom)
         RectangularBreadth      => elemSR(eIdx,esr_Weir_RectangularBreadth)
         TrapezoidalBreadth      => elemSR(eIdx,esr_Weir_TrapezoidalBreadth)
         TriangularSideSlope     => elemSR(eIdx,esr_Weir_TriangularSideSlope)
         TrapezoidalLeftSlope    => elemSR(eIdx,esr_Weir_TrapezoidalLeftSlope)
         TrapezoidalRightSlope   => elemSR(eIdx,esr_Weir_TrapezoidalRightSlope)
+        Zcrest                  => elemSR(eIdx,esr_Weir_Zcrest)
+        Zcrown                  => elemSR(eIdx,esr_Weir_Zcrown)
         
         IsSurcharged => elemYN(eIdx,eYN_isSurcharged)
         !%-----------------------------------------------------------------------------     

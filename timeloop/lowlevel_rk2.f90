@@ -1263,7 +1263,7 @@ module lowlevel_rk2
         real(8), pointer    :: fullVolume(:), length(:), PNumber(:), PCelerity(:), SlotHydRad(:) 
         real(8), pointer    :: SlotWidth(:), SlotVolume(:), SlotDepth(:), SlotArea(:), volume(:)  
         real(8), pointer    :: velocity(:), fPNumber(:), TargetPCelerity, cfl, grav, PreissmannAlpha
-        logical, pointer    :: isSlot(:)
+        logical, pointer    :: isSlot(:), fSlot(:)
 
         character(64) :: subroutine_name = 'll_slot_computation_ETM'
         !%-----------------------------------------------------------------------------
@@ -1287,6 +1287,7 @@ module lowlevel_rk2
         velocity   => elemR(:,er_velocity)
         !% pointer to elemYN column
         isSlot     => elemYN(:,eYN_isSlot)
+        fSlot      => faceYN(:,fYN_isSlot)
         !% pointers to elemI columns
         fUp        => elemI(:,ei_Mface_uL)
         fDn        => elemI(:,ei_Mface_dL)
@@ -1300,23 +1301,34 @@ module lowlevel_rk2
         grav                => setting%Constant%gravity
 
         !% initialize slot
-        SlotVolume(thisP) = max(volume(thisP) - fullvolume(thisP), zeroR)
-        SlotArea(thisP)   = max(SlotVolume(thisP) / length(thisP), zeroR)
+        SlotVolume(thisP) = zeroR
+        SlotArea(thisP)   = zeroR
         SlotDepth(thisP)  = zeroR
         SlotWidth(thisP)  = zeroR
         PCelerity(thisP)  = zeroR
         isSlot(thisP)     = .false.
+        fSlot(fUp(thisP)) = .false.
+        fSlot(fDn(thisP)) = .false.
+
+        where (volume(thisP) > fullVolume(thisP))
+            SlotVolume(thisP) = volume(thisP) - fullvolume(thisP)
+            SlotArea(thisP)   = SlotVolume(thisP) / length(thisP)
+            isSlot(thisP)     = .true.
+            fSlot(fUp(thisP)) = .true.
+            fSlot(fDn(thisP)) = .true.
+        end where
 
         select case (SlotMethod)
             case (StaticSlot)
                 !% find incipient surcharge  and non-surcharged elements reset the preissmann number
-                where (SlotArea(thisP) .le. zeroR)
+                where (isSlot(thisP)) 
                     PNumber(thisP) =  oneR
                 end where
 
             case (DynamicSlot)
                 !% find incipient surcharge  and non-surcharged elements reset the preissmann number and celerity for dynamic slot
-                where ((SlotArea(thisP) .le. zeroR))
+                ! where ((SlotArea(thisP) .le. zeroR) .or. (AreaN0(thisP) .le. fullarea(thisP))) 
+                where ((SlotArea(thisP) .le. zeroR)) 
                     PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
                 end where
 
@@ -1329,15 +1341,13 @@ module lowlevel_rk2
         end select
 
         !% Slot Calculation
-        where (SlotArea(thisP) .gt. zeroR)
-            !% set the slot boolean as true
-            isSlot(thisP)  = .true.
-            !% find the water height at the slot
-            SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP) + SlotArea(thisP)))
-            !% find the width of the slot
+        where (isSlot(thisP))
+            ! !% find the water height at the slot
+            SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
+            ! !% find the width of the slot
             SlotWidth(thisP) = SlotArea(thisP) / SlotDepth(thisP) 
             !% Preissmann Celerity
-            PCelerity(thisP) = TargetPCelerity / PNumber(thisP)
+            PCelerity(thisP) = TargetPCelerity / PNumber(thisP)   
         end where
 
     end subroutine ll_slot_computation_ETM

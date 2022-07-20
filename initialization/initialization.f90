@@ -76,6 +76,7 @@ contains
 
         !% --- define the reverse keys (used mainly for debugging)
         call define_keys_reverse()
+        call define_apikeys_reverse()
         !% NOTES:
         !%    reverseKey(ii) gives you the text name of the ii key
         !%    there are also two useful subroutines:
@@ -455,7 +456,7 @@ contains
 !%==========================================================================
 !%==========================================================================
 !%
-    subroutine init_linknode_arrays()
+ subroutine init_linknode_arrays()
         !%-----------------------------------------------------------------------------
         !% Description:
         !%   Retrieves data from EPA-SWMM interface and populates link and node tables
@@ -470,83 +471,93 @@ contains
             character(64) :: subroutine_name = 'init_linknode_arrays'
         !%-----------------------------------------------------------------------------
         !% Preliminaries
-            if (crashYN) return
+            !if (crashYN) return
             if (setting%Debug%File%initialization) &
                 write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
 
             if (.not. api_is_initialized) then
                 print *, "ERROR: API is not initialized"
                 !stop
-                call util_crashpoint(29873)
-                return
+                call util_crashpoint(39873)
+                !return
             end if
         !%-----------------------------------------------------------------------------
         !% Allocate storage for link & node tables
         call util_allocate_linknode()
 
-        link%I(:,li_num_phantom_links) = 0
+        !link%I(:,li_num_phantom_links) = 0
         node%I(:,ni_N_link_u) = 0
         node%I(:,ni_N_link_d) = 0
 
-        do ii = 1, SWMM_N_link
+        !% -----------------------
+        !% --- LINK DATA
+        !% -----------------------
+        
+        do ii = 1, N_link
+            !% --- store the basic link data
             link%I(ii,li_idx) = ii
-            link%I(ii,li_link_direction) = interface_get_linkf_attribute(ii, api_linkf_direction)
-            link%I(ii,li_link_type) = interface_get_linkf_attribute(ii, api_linkf_type)
-            link%I(ii,li_link_sub_type) = interface_get_linkf_attribute(ii, api_linkf_sub_type)
-            link%I(ii,li_geometry) = interface_get_linkf_attribute(ii, api_linkf_geometry)
+            link%I(ii,li_link_direction) = interface_get_linkf_attribute(ii, api_linkf_direction,.true.)
+            link%I(ii,li_link_type)      = interface_get_linkf_attribute(ii, api_linkf_type,     .true.)
+            link%I(ii,li_link_sub_type)  = interface_get_linkf_attribute(ii, api_linkf_sub_type, .true.)
+            link%I(ii,li_geometry)       = interface_get_linkf_attribute(ii, api_linkf_geometry, .true.)
 
+            !% --- identify the upstream and downstream node indexes
             if (link%I(ii,li_link_direction) == 1) then
-                link%I(ii,li_Mnode_u) = interface_get_linkf_attribute(ii, api_linkf_node1) + 1 ! node1 in C starts from 0
-                link%I(ii,li_Mnode_d) = interface_get_linkf_attribute(ii, api_linkf_node2) + 1 ! node2 in C starts from 0
+                !% --- for standard channel/conduits where upstream is 
+                !%     higher bottom elevation than downstream
+                link%I(ii,li_Mnode_u) = interface_get_linkf_attribute(ii, api_linkf_node1,.true.) + 1 ! node1 in C starts from 0
+                link%I(ii,li_Mnode_d) = interface_get_linkf_attribute(ii, api_linkf_node2,.true.) + 1 ! node2 in C starts from 0
             else if (link%I(ii,li_link_direction) == -1) then
-                link%I(ii,li_Mnode_u) = interface_get_linkf_attribute(ii, api_linkf_node2) + 1 ! node2 in C starts from 0
-                link%I(ii,li_Mnode_d) = interface_get_linkf_attribute(ii, api_linkf_node1) + 1 ! node1 in C starts from 0
+                !% --- when upstream has lower bottom elevation than downstream,
+                !%     EPA-SWMM swaps the connectionso prevent a negative slope. 
+                !%     We can handle a negative slope in FV method, so switch the 
+                !%     nodes back tocorrect orientation
+                link%I(ii,li_Mnode_u) = interface_get_linkf_attribute(ii, api_linkf_node2,.true.) + 1 ! node2 in C starts from 0
+                link%I(ii,li_Mnode_d) = interface_get_linkf_attribute(ii, api_linkf_node1,.true.) + 1 ! node1 in C starts from 0
             else
                 write(*,*) 'Fatal error: link direction should be 1 or -1'
-                stop 79456456
+                stop 794564
             end if 
+            !% --- the ''parent'' link is the input EPA-SWMM link, which may be broken up by partitioning
             link%I(ii,li_parent_link) = ii
 
+            !% --- set link ID for the nodes upstream and downstream of thisLink (ii)
             node%I(link%I(ii,li_Mnode_d), ni_N_link_u) = node%I(link%I(ii,li_Mnode_d), ni_N_link_u) + 1
             node%I(link%I(ii,li_Mnode_d), ni_idx_base1 + node%I(link%I(ii,li_Mnode_d), ni_N_link_u)) = ii
             node%I(link%I(ii,li_Mnode_u), ni_N_link_d) = node%I(link%I(ii,li_Mnode_u), ni_N_link_d) + 1
             node%I(link%I(ii,li_Mnode_u), ni_idx_base2 + node%I(link%I(ii,li_Mnode_u), ni_N_link_d)) = ii
 
-            !% HACK All links have the same initial depth type which is the default one
-            !% a better approach would be to allow specific links to have specific depth
-            !% types via an external JSON file for links whose path can be specified in
-            !% setting%Link%PropertiesFile
+            !% --- set the approach used for computing the initial depth
+            !%     HACK All links have the same initial depth type which is the default one
+            !%     a better approach would be to allow specific links to have specific depth
+            !%     types via an external JSON file for links whose path can be specified in
+            !%     setting%Link%PropertiesFile
             link%I(ii,li_InitialDepthType) = setting%Link%DefaultInitDepthType
-            link%R(ii,lr_Length) = interface_get_linkf_attribute(ii, api_linkf_conduit_length)
-            !% link%R(ii,lr_TopWidth): defined in network_define.f08
-            link%R(ii,lr_BreadthScale) = interface_get_linkf_attribute(ii, api_linkf_xsect_wMax)
-            !% link%R(ii,lr_Slope): defined in network_define.f08 because SWMM5 reverses negative slope
-            link%R(ii,lr_LeftSlope) = interface_get_linkf_attribute(ii, api_linkf_left_slope)
-            link%R(ii,lr_RightSlope) = interface_get_linkf_attribute(ii, api_linkf_right_slope)
-            link%R(ii,lr_Roughness) = interface_get_linkf_attribute(ii, api_linkf_conduit_roughness)
-            link%R(ii,lr_InitialFlowrate) = interface_get_linkf_attribute(ii, api_linkf_q0)
-            link%R(ii,lr_InitialDepth) = (link%R(ii,lr_InitialDnstreamDepth) + link%R(ii,lr_InitialUpstreamDepth)) / 2.0
-            link%R(ii,lr_FullDepth) = interface_get_linkf_attribute(ii, api_linkf_xsect_yFull)
-            link%R(ii,lr_InletOffset) = interface_get_linkf_attribute(ii,api_linkf_offset1)
-            link%R(ii,lr_OutletOffset) = interface_get_linkf_attribute(ii,api_linkf_offset2)
-            !write(*,*) 'api_nodef_initDepth 1'
-            link%R(ii,lr_InitialUpstreamDepth) = max(interface_get_nodef_attribute(link%I(ii,li_Mnode_u), api_nodef_initDepth) - &
-                                                    link%R(ii,lr_InletOffset), zeroR)
-            !write(*,*) 'api_nodef_initDepth 2'
-            link%R(ii,lr_InitialDnstreamDepth) = max(interface_get_nodef_attribute(link%I(ii,li_Mnode_d), api_nodef_initDepth) - &
-                                                    link%R(ii,lr_OutletOffset), zeroR)
 
-            !% special element attributes
-            link%I(ii,li_weir_EndContrations) = interface_get_linkf_attribute(ii, api_linkf_weir_end_contractions)
-            link%I(ii,li_curve_id) = interface_get_linkf_attribute(ii, api_linkf_curveid)
-            link%R(ii,lr_DischargeCoeff1) = interface_get_linkf_attribute(ii, api_linkf_discharge_coeff1)
-            link%R(ii,lr_DischargeCoeff2) = interface_get_linkf_attribute(ii, api_linkf_discharge_coeff2)
-            link%R(ii,lr_initSetting) = interface_get_linkf_attribute(ii, api_linkf_initSetting)
-            link%R(ii,lr_yOn) = interface_get_linkf_attribute(ii, api_linkf_yOn)
-            link%R(ii,lr_yOff) = interface_get_linkf_attribute(ii, api_linkf_yOff)
-            link%R(ii,lr_SideSlope) = interface_get_linkf_attribute(ii, api_linkf_weir_side_slope)
-            !% SWMM5 doesnot distinguish between channel and conduit
-            !% however we need that distinction to set up the init condition
+            link%R(ii,lr_Length)          = interface_get_linkf_attribute(ii, api_linkf_conduit_length,   .false.)
+            link%R(ii,lr_BreadthScale)    = interface_get_linkf_attribute(ii, api_linkf_xsect_wMax,       .false.)
+            link%R(ii,lr_LeftSlope)       = interface_get_linkf_attribute(ii, api_linkf_left_slope,       .false.)
+            link%R(ii,lr_RightSlope)      = interface_get_linkf_attribute(ii, api_linkf_right_slope,      .false.)
+            link%R(ii,lr_Roughness)       = interface_get_linkf_attribute(ii, api_linkf_conduit_roughness,.false.)
+            link%R(ii,lr_InitialFlowrate) = interface_get_linkf_attribute(ii, api_linkf_q0,               .false.)
+            link%R(ii,lr_FullDepth)       = interface_get_linkf_attribute(ii, api_linkf_xsect_yFull,      .false.)
+            link%R(ii,lr_InletOffset)     = interface_get_linkf_attribute(ii, api_linkf_offset1,          .false.)
+            link%R(ii,lr_OutletOffset)    = interface_get_linkf_attribute(ii, api_linkf_offset2,          .false.)
+            link%R(ii,lr_Setting)         = interface_get_linkf_attribute(ii, api_linkf_setting,          .false.)
+            link%R(ii,lr_TimeLastSet)     = interface_get_linkf_attribute(ii, api_linkf_timelastset,      .false.)
+
+            !% --- special element attributes
+            link%I(ii,li_weir_EndContractions) = interface_get_linkf_attribute(ii, api_linkf_weir_end_contractions,.true.)
+            link%I(ii,li_curve_id)            = interface_get_linkf_attribute(ii, api_linkf_curveid,              .true.)
+            link%R(ii,lr_DischargeCoeff1)     = interface_get_linkf_attribute(ii, api_linkf_discharge_coeff1,     .false.)
+            link%R(ii,lr_DischargeCoeff2)     = interface_get_linkf_attribute(ii, api_linkf_discharge_coeff2,     .false.)
+            link%R(ii,lr_initSetting)         = interface_get_linkf_attribute(ii, api_linkf_initSetting,          .false.)
+            link%R(ii,lr_yOn)                 = interface_get_linkf_attribute(ii, api_linkf_yOn,                  .false.)
+            link%R(ii,lr_yOff)                = interface_get_linkf_attribute(ii, api_linkf_yOff,                 .false.)
+            link%R(ii,lr_SideSlope)           = interface_get_linkf_attribute(ii, api_linkf_weir_side_slope,      .false.)
+
+            !% --- SWMM5 does not distinguish between channel and conduit
+            !%     however we need that distinction to set up the init condition
             if ( (link%I(ii,li_link_type) == lPipe)          .and. &
                  ( &
                  (link%I(ii,li_geometry) == lRectangular)    .or. &
@@ -561,69 +572,73 @@ contains
                 link%I(ii,li_link_type) = lChannel
             end if
 
-            !% brh20211207s
-            link%YN(ii,lYN_isOutput) = (interface_get_linkf_attribute(ii,api_linkf_rptFlag) == 1)
-            !% brh20211207e
+            !% --- Irregular cross-sections (TRANSECTS in SWMM input file)
+            if (link%I(ii,li_geometry) == lIrregular) then
+               link%I(ii,li_transect_idx) = interface_get_linkf_attribute(ii, api_linkf_transectidx,.true.)
+            end if
+
+            !% --- set output links
+            link%YN(ii,lYN_isOutput) = (interface_get_linkf_attribute(ii,api_linkf_rptFlag,.true.) == 1)
+
+            ! !% --- Check if type1 pump and add control and monitor point for later array allocation
+            ! if (link%I(ii,li_link_sub_type) == lType1Pump) then
+            !     N_ControlPoint = N_ControlPoint + 1
+            !     N_MonitorPoint = N_MonitorPoint + 1
+            ! end if
+
         end do
 
-        !% check for errors in number of connections
-        ! print *, ' '
-        ! print *, '=========================================================='
-        ! print *, '  in ',trim(subroutine_name)
-        ! print *, 'printing number of connections up and down on each node'
+        !% --- ERROR CHECK for number of connections
         do ii = 1,N_node
-
-            !print *, ii, node%I(ii, ni_N_link_u),  node%I(ii, ni_N_link_d)
-
             if (node%I(ii, ni_N_link_u) > max_up_branch_per_node) then
                 if (this_image() == 1) then
                     write(*,*) 'FATAL ERROR IN INPUT FILE'
                     write(*,"(A,i4,A)") 'One or more nodes have more than ',max_up_branch_per_node,' upstream connections'
                     write(*,*) 'Unfortunately, this connection limit is a hard-coded limit of SWMM5+ an cannot be exceeded.'
                 end if
-                !stop 
                 call util_crashpoint(387666)
-                return
             end if
 
-            if (node%I(ii, ni_N_link_u) > max_dn_branch_per_node) then
+            if (node%I(ii, ni_N_link_d) > max_dn_branch_per_node) then
                 if (this_image() == 1) then
                     write(*,*) 'FATAL ERROR IN INPUT FILE'
                     write(*,"(A,i4,A)") 'One or more nodes have more than ',max_dn_branch_per_node,' downstream connections'
                     write(*,*) 'Unfortunately, this connection limit is a hard-coded limit of SWMM5+ an cannot be exceeded.'
                 end if
-                !stop 
                 call util_crashpoint(86752)
-                return
             end if
-
         end do
-        
+
+        !% -----------------------
+        !% --- NODE DATA
+        !% -----------------------
         do ii = 1, N_node
-            !write(*,*) '======= starting node ',ii
-            !write(*,*)
+
             total_n_links = node%I(ii,ni_N_link_u) + node%I(ii,ni_N_link_d)
             node%I(ii, ni_idx) = ii
             !%
             !% --- handle special types of nodes
             if (interface_get_nodef_attribute(ii, api_nodef_type) == API_OUTFALL) then
-                !write(*,*) '... is outfall type'
                 node%I(ii, ni_node_type) = nBCdn
+
+                !% --- check for a flap gate on an outfall
+                if (interface_get_nodef_attribute(ii, api_nodef_hasFlapGate) == 1) then
+                    node%YN(ii, nYN_hasFlapGate) = .true.
+                else
+                    node%YN(ii, nYN_hasFlapGate) = .false.
+                end if
+
             else if (interface_get_nodef_attribute(ii, api_nodef_type) == API_STORAGE) then
-                !write(*,*) '... is storage type'
                 node%I(ii, ni_node_type) = nJm
                 node%YN(ii, nYN_has_storage) = .true.
             else 
                 !% --- classify by number of links connected
                 select case (total_n_links)
                 case (oneI)
-                    ! write(*,*) '... is 1 junction is an upstream BC'
                     node%I(ii, ni_node_type) = nJ1
-                case (twoI)
-                    ! write(*,*) '... is 2 junction type'        
+                case (twoI)     
                     node%I(ii, ni_node_type) = nJ2
                 case default 
-                    ! write(*,*) '... is 3+ junction type'
                     node%I(ii, ni_node_type) = nJm
                 end select
             end if 
@@ -661,7 +676,7 @@ contains
 
             !write(*,*) 'call api_nodef_initDepth'
             node%R(ii,nr_InitialDepth)      = interface_get_nodef_attribute(ii, api_nodef_initDepth)
-            !write(*,*) '... nr_InitialDepth = ',node%R(ii,nr_InitialDepth)
+            !write(*,*) '... nr_InitialDepth = ',node%R(ii,nr_InitialDepth), ii
             !write(*,*)
 
             !write(*,*) 'call api_nodef_invertElev'
@@ -707,8 +722,47 @@ contains
             !% brh20211207e
         end do
 
-        !% Update Link/Node names
+        !% --- Store the Link/Node names
         call interface_update_linknode_names()
+
+        !% --- ERROR CHECK connections for outfalls
+        do ii = 1,N_node
+            if (interface_get_nodef_attribute(ii, api_nodef_type) == API_OUTFALL) then
+                !% --- check if outfall has more than one upstream connection
+                if( node%I(ii, ni_N_link_u) > 1) then
+                    write(*,*) 'FATAL ERROR IN INPUT FILE'
+                    write(*,*) 'Outfall has more than 1 upstream link, which is not supported by SWMM5+'
+                    write(*,"(A,A)") 'Node name iin file is ',trim(node%Names(ii)%str)
+                    call util_crashpoint(99374)
+                endif
+                !% --- check if outfall has a downstream connection
+                if ( node%I(ii, ni_N_link_d) > 0) then
+                    write(*,*) 'FATAL ERROR IN INPUT FILE'
+                    write(*,*) 'Outfall has a downstream connection, which is not supported by SWMM5+'
+                    write(*,"(A,A)") 'Node name iin file is ',trim(node%Names(ii)%str)
+                    write(*,*) 'Changing the donwstream connection to upstream connection'
+                    call init_switch_outfall_connections(ii)
+                end if
+            end if
+        end do
+
+        !% Check for small links if automatic resizing is not used.
+        if (setting%Discretization%MinElemLengthMethod /= ElemLengthAdjust) then
+            do ii = 1, N_link
+                if ( (link%I(ii,li_link_type) == lChannel) .or. (link%I(ii,li_link_type) == lPipe) ) then
+                    if (link%R(ii,lr_Length) < 1.5 * setting%Discretization%NominalElemLength) then
+                        print *, 'SWMM input file links are smaller than 1.5 * NominalElemLength'
+                        print *, 'Found link length of ',link%R(ii,lr_Length)
+                        print *, 'Link index is ',ii
+                        print *, 'setting.Discretization.NominalElemLength is ',setting%Discretization%NominalElemLength
+                        print *, 'Either change setting.Discretization.AdjustLinkLengthYN to true, or'
+                        print *, 'Decrease nominal element length to less than', link%R(ii,lr_Length)/1.5
+                        call util_crashpoint(447298)
+                    end if
+                end if
+            end do
+        end if
+
         if (setting%Debug%File%initialization) then
             !%-----------------------------------------------------------------------------
             print *, 'idx,    nodeType,    linkU,    linkD,   curveID, patternRes'
@@ -725,9 +779,77 @@ contains
         end if 
 
         if (setting%Debug%File%initialization)  &
-            write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
+            write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"  
 
     end subroutine init_linknode_arrays
+!%
+!%==========================================================================
+!%==========================================================================
+!%
+   subroutine init_switch_outfall_connections(nodeIdx)
+        !%------------------------------------------------------------------
+        !% Description:
+        !% If an outfall has a downstream connection, which is not supported by SWMM5+
+        !%     the downstream connection will be changed to an upstream connection
+        !%------------------------------------------------------------------
+        integer, intent(in) :: nodeIdx
+        integer             :: ii, LinkCounter, LinkIdx
+        !%------------------------------------------------------------------
+        LinkIdx = node%I(nodeIdx, ni_Mlink_d1)
+
+        !% switch the node mappings in link
+        link%I(LinkIdx,li_link_direction) = -oneI
+        link%I(LinkIdx,li_Mnode_u) = interface_get_linkf_attribute(LinkIdx, api_linkf_node2,.true.) + 1 ! node2 in C starts from 0
+        link%I(LinkIdx,li_Mnode_d) = interface_get_linkf_attribute(LinkIdx, api_linkf_node1,.true.) + 1 ! node1 in C starts from 0
+
+        !% now the previously upstream outfall node is downstream outfall node which will have
+        !% only one upstream link and no downstream link 
+        node%I(link%I(LinkIdx,li_Mnode_d), ni_N_link_u) = oneI
+        node%I(link%I(LinkIdx,li_Mnode_d), ni_N_link_d) = zeroI
+        
+        !% save the new link mapping in the outfall node
+        node%I(link%I(LinkIdx,li_Mnode_d), ni_idx_base1 + node%I(link%I(LinkIdx,li_Mnode_d), ni_N_link_u)) = LinkIdx
+        node%I(link%I(LinkIdx,li_Mnode_d), ni_idx_base2 + oneI) = nullvalueI
+             
+        !% now the previously downstream link will be switched to an upstream link
+        !% increase the link count at that node and add the new link map
+        node%I(link%I(LinkIdx,li_Mnode_u), ni_N_link_d) = node%I(link%I(LinkIdx,li_Mnode_u), ni_N_link_d) + oneI
+        node%I(link%I(LinkIdx,li_Mnode_u), ni_idx_base2 + node%I(link%I(LinkIdx,li_Mnode_u), ni_N_link_d)) = LinkIdx
+        node%I(link%I(LinkIdx,li_Mnode_u), ni_idx_base1 + node%I(link%I(LinkIdx,li_Mnode_u), ni_N_link_u)) = nullvalueI
+        node%I(link%I(LinkIdx,li_Mnode_u), ni_N_link_u) = node%I(link%I(LinkIdx,li_Mnode_u), ni_N_link_u) - oneI
+
+        !% --- AGAIN ERROR CHECK for number of connections
+        do ii = 1,N_node
+            if (node%I(ii, ni_N_link_u) > max_up_branch_per_node) then
+                if (this_image() == 1) then
+                    write(*,*) 'FATAL ERROR IN INPUT FILE'
+                    write(*,"(A,i4,A)") 'One or more nodes have more than ',max_up_branch_per_node,' upstream connections'
+                    write(*,*) 'Unfortunately, this connection limit is a hard-coded limit of SWMM5+ an cannot be exceeded.'
+                end if
+                call util_crashpoint(387667)
+            end if
+
+            if (node%I(ii, ni_N_link_d) > max_dn_branch_per_node) then
+                if (this_image() == 1) then
+                    write(*,*) 'FATAL ERROR IN INPUT FILE'
+                    write(*,"(A,i4,A)") 'One or more nodes have more than ',max_dn_branch_per_node,' downstream connections'
+                    write(*,*) 'Unfortunately, this connection limit is a hard-coded limit of SWMM5+ an cannot be exceeded.'
+                end if
+                call util_crashpoint(86752)
+            end if
+
+            LinkCounter = node%I(ii, ni_N_link_u) + node%I(ii, ni_N_link_d)
+
+            if (LinkCounter > N_link) then
+                if (this_image() == 1) then
+                    write(*,*) 'FATAL ERROR IN init_switch_outfall_connections'
+                    write(*,"(A,i4,A)") 'This subroutine has increased links from ',N_link,' to ', LinkCounter
+                end if
+                call util_crashpoint(86753)
+            end if
+        end do
+        !% Closing
+    end subroutine init_switch_outfall_connections
 !%
 !%==========================================================================
 !%==========================================================================

@@ -55,45 +55,6 @@ contains
         !% divide the link node networks in elements and faces
         call init_network_datacreate ()
 
-        ! print *, ' in ',trim(subroutine_name)
-        ! ii=123
-        ! !print *, size(elemI,DIM=1),size(elemI,DIM=2)
-        ! print *, 'Element Type = ' ,elemI(ii,ei_elementType)
-        ! print *, 'Geometry Type = ',elemI(ii,ei_geometryType)
-        ! print *, 'this link       ',elemI(ii,ei_link_Gidx_SWMM)
-
-        ! stop 
-        !call util_crashpoint(397805)        
-
-        ! print *, ' '
-        ! print *, ' elements ---------------------------------------------'
-        ! do ii =1,N_elem(1)
-        !     write(*,"(A, 10i9)") trim(reverseKey(elemI(ii,ei_elementType))), &
-        !         elemI(ii,ei_Lidx), &
-        !         elemI(ii,ei_Mface_uL), &
-        !         elemI(ii,ei_Mface_dL)
-        ! end do
-
-        ! print *, ' ======================================='
-        ! print *, elemI(15,ei_Lidx), elemI(15,ei_Mface_uL),elemI(15,ei_Mface_dL)
-        ! print *, elemI(16,ei_Lidx), elemI(16,ei_Mface_uL),elemI(16,ei_Mface_dL)
-        ! print *, ' ======================================='
-        ! !stop 
-        !call util_crashpoint(77869)
-
-        ! print *, 'why do elements 15 and 16 have the same downstream face?'
-        ! stop 
-        !call util_crashpoint(398705)
-
-        ! print *, ' '
-        ! print *, ' faces ---------------------------------------------------'
-        ! do ii=1,N_face(1)
-        !     write(*,"(A,10i9)") trim(reverseKey(faceI(ii,fi_BCtype))), &
-        !         faceI(ii,fi_Lidx), &
-        !         faceI(ii,fi_Melem_uL), &
-        !         faceI(ii,fi_Melem_dL)
-        ! end do
-
         !% replaces ni_elemface_idx of nJ2 nodes for the upstream elem
         !% of the face associated with the node
         call init_network_update_nj2_elem ()
@@ -103,25 +64,6 @@ contains
         call init_network_CC_elem_length_adjust ()
 
         sync all
-
-        ! print *, ' '
-        ! print *, ' elements'
-        ! do ii =1,N_elem(1)
-        !     write(*,"(A, 10i9)") trim(reverseKey(elemI(ii,ei_elementType))), &
-        !         elemI(ii,ei_Lidx), &
-        !         elemI(ii,ei_Mface_uL), &
-        !         elemI(ii,ei_Mface_dL)
-        ! end do
-
-        ! print *, ' '
-        ! print *, ' faces'
-        ! do ii=1,N_face(1)
-        !     write(*,"(A,10i9)") trim(reverseKey(faceI(ii,fi_BCtype))), &
-        !         faceI(ii,fi_Lidx), &
-        !         faceI(ii,fi_Melem_uL), &
-        !         faceI(ii,fi_Melem_dL)
-        ! end do
-
         
         ! stop 
         !call util_crashpoint(39705)
@@ -315,13 +257,6 @@ contains
         call init_network_handle_partition &
             (image, ElemLocalCounter, FacelocalCounter, ElemGlobalCounter, FaceGlobalCounter)
 
-            ! print *, ' ======================================='
-            ! print *, elemI(15,ei_Lidx), elemI(15,ei_Mface_uL),elemI(15,ei_Mface_dL)
-            ! print *, elemI(16,ei_Lidx), elemI(16,ei_Mface_uL),elemI(16,ei_Mface_dL)
-            ! print *, ' ======================================='
-            ! !stop 
-            !call util_crashpoint(77869)
-
         !% finish mapping all the junction branch and faces that were not
         !% handeled in handle_link_nodes subroutine
         call init_network_map_nodes (image)
@@ -493,60 +428,22 @@ contains
             upNode   => link%I(thisLink,li_Mnode_u)
             dnNode   => link%I(thisLink,li_Mnode_d)
 
-            ! print *, '+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
-            ! print *, ii
-            ! print *, 'THIS LINK = ',thisLink
-            ! print *, 'UP NODE = ',upNode
-            ! print *, 'DN NODE = ',dnNode
-
-            ! print *, ' =======================================  0001'
-            ! print *, elemI(15,ei_Lidx), elemI(15,ei_Mface_uL),elemI(15,ei_Mface_dL)
-            ! print *, elemI(16,ei_Lidx), elemI(16,ei_Mface_uL),elemI(16,ei_Mface_dL)
-            ! print *, ' ======================================='
-
-            !print *, 'AAA ',ElemLocalCounter, FaceLocalCounter
             !% handle the upstream node of the link to create elements and faces
             call init_network_handle_upstreamnode &
                 (image, thisLink, upNode, ElemLocalCounter, FaceLocalCounter, ElemGlobalCounter, &
                 FaceGlobalCounter)
 
-            ! print *, ' =======================================  0002'
-            ! print *, elemI(15,ei_Lidx), elemI(15,ei_Mface_uL),elemI(15,ei_Mface_dL)
-            ! print *, elemI(16,ei_Lidx), elemI(16,ei_Mface_uL),elemI(16,ei_Mface_dL)
-            ! print *, ' ======================================='
-
-            !print *, 'BBB ',ElemLocalCounter, FaceLocalCounter
             !% handle the link to create elements and faces
             call init_network_handle_link &
                 (image, thisLink, upNode, ElemLocalCounter, FaceLocalCounter, ElemGlobalCounter, &
                 FaceGlobalCounter)
-
-            ! print *, ' ======================================= 0003'
-            ! print *, elemI(15,ei_Lidx), elemI(15,ei_Mface_uL),elemI(15,ei_Mface_dL)
-            ! print *, elemI(16,ei_Lidx), elemI(16,ei_Mface_uL),elemI(16,ei_Mface_dL)
-            ! print *, ' ======================================='
-
-            !print *, 'CCC ',ElemLocalCounter, FaceLocalCounter    
+  
             !% handle the downstream node of the link to create elements and faces
             call init_network_handle_downstreamnode &
                 (image, thisLink, dnNode, ElemLocalCounter, FaceLocalCounter, ElemGlobalCounter, &
                 FaceGlobalCounter)
-                
 
-            ! print *, ' ======================================= 0004'
-            ! print *, elemI(15,ei_Lidx), elemI(15,ei_Mface_uL),elemI(15,ei_Mface_dL)
-            ! print *, elemI(16,ei_Lidx), elemI(16,ei_Mface_uL),elemI(16,ei_Mface_dL)
-            ! print *, ' ======================================='   
-
-            !print *, 'DDD ',ElemLocalCounter, FaceLocalCounter 
         end do
-
-        ! print *, ' ======================================='
-        !     print *, elemI(15,ei_Lidx), elemI(15,ei_Mface_uL),elemI(15,ei_Mface_dL)
-        !     print *, elemI(16,ei_Lidx), elemI(16,ei_Mface_uL),elemI(16,ei_Mface_dL)
-        !     print *, ' ======================================='
-        !     !stop 
-        !call util_crashpoint(77869)
 
         !%--------------------------------------------------------------------
         !% Closing
@@ -1861,7 +1758,7 @@ contains
             write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
 
         elem_nominal_length => setting%Discretization%NominalElemLength
-        elem_shorten_cof    => setting%Discretization%LinkShortingFactor
+        elem_shorten_cof    => setting%Discretization%ElemShortingFactor
 
         !% find the length of the junction branch
         if (link%I(LinkIdx,li_length_adjusted) == OneSideAdjust) then
@@ -2016,11 +1913,11 @@ contains
         eDn => faceI(:,fi_Melem_dL)
 
         where (faceYN(:,fYN_isUpGhost))
-            elemYN(eDn,eYN_isBoundary) = .true.
+            elemYN(eDn,eYN_isBoundary_up) = .true.
         endwhere
 
         where (faceYN(:,fYN_isDnGhost))
-            elemYN(eUp,eYN_isBoundary) = .true.
+            elemYN(eUp,eYN_isBoundary_dn) = .true.
         endwhere 
 
         if (setting%Debug%File%network_define) &

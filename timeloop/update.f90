@@ -294,7 +294,7 @@ module update
         !         !% initialize preissmann slot celerity
         !         PCelerity(thisP2) = zeroR
         !         where (isSlot(thisP)) 
-        !             PCelerity(thisP2) = sqrt(grav * fullArea(thisP2)/SlotWidth(thisP2))
+        !             PCelerity(thisP2) = sqrt(grav * (fullArea(thisP2))/SlotWidth(thisP2))
         !         end where
         !     end if
         end if
@@ -390,8 +390,14 @@ module update
         !print *, 'here in JB update '
         do ii=1,max_branch_per_node
             wavespeed(thisP+ii) = sqrt(grav * depth(thisP+ii))
-            w_uQ(thisP+ii) = - onehalfR * length(thisP+ii)  / (velocity(thisP+ii) - wavespeed(thisP+ii))
-            w_dQ(thisP+ii) = + onehalfR * length(thisP+ii)  / (velocity(thisP+ii) + wavespeed(thisP+ii))
+
+            where (.not. elemYN(thisP+ii,eYN_isSlot)) 
+                w_uQ(thisP+ii) = - onehalfR * length(thisP+ii)  / (velocity(thisP+ii) - wavespeed(thisP+ii))
+                w_dQ(thisP+ii) = + onehalfR * length(thisP+ii)  / (velocity(thisP+ii) + wavespeed(thisP+ii))
+            elsewhere
+                w_uQ(thisP+ii) = - onehalfR * length(thisP+ii)  / (velocity(thisP+ii) - elemR(thisP+ii,er_Preissmann_Celerity))
+                w_dQ(thisP+ii) = + onehalfR * length(thisP+ii)  / (velocity(thisP+ii) + elemR(thisP+ii,er_Preissmann_Celerity))
+            endwhere
             
 
             ! if (setting%Time%Now/3600.0 > 388.0) then

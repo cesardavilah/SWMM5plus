@@ -534,7 +534,7 @@ int DLLEXPORT api_get_nodef_attribute(
     int node_idx, int attr, double* value)
 //===============================================================================
 {
-    int error, bpat, tseries_idx;
+    int error, bpat, idx, tseries_idx;
 
     //printf("==== %d \n",attr);
 
@@ -560,6 +560,106 @@ int DLLEXPORT api_get_nodef_attribute(
             }
             break;   
 
+        case nodef_hasFlapGate :
+            switch (Node[node_idx].type) {
+                case OUTFALL :             
+                    *value = Outfall[Node[node_idx].subIndex].hasFlapGate;
+                    break;
+                default :    
+                    *value = API_NULL_VALUE_I;
+                    sprintf(errmsg, "Extracting nodef_hasFlapGate for NODE %s, which is not an outfall [api.c -> api_get_nodef_attribute]", Node[node_idx].ID);
+                    api_report_writeErrorMsg(api_err_wrong_type, errmsg);
+                    return api_err_wrong_type;
+            }
+            break;
+
+        
+        case nodef_head_tSeries :
+            if (Node[node_idx].type == OUTFALL)   
+            {
+                // the outfall index
+                idx = Node[node_idx].subIndex; 
+                //printf(" here in API %d %d \n ",Outfall[idx].type, TIMESERIES_OUTFALL);
+        
+                switch (Outfall[idx].type) {
+                    case TIMESERIES_OUTFALL:
+                        //printf(" outfall type in timeseries %d \n ",Outfall[idx].type);
+                         // the stage series
+                        *value = Outfall[idx].stageSeries;
+                        break;
+                    case TIDAL_OUTFALL:
+                        *value = Outfall[idx].tideCurve;
+                        break;
+                    default:
+                        //printf(" outfall type in default %d \n ",Outfall[idx].type);
+                        *value = API_NULL_VALUE_I;
+                        sprintf(errmsg, "Attemptint to extract node_head_tSeries for NODE %s, which doesn't have an time series [api.c -> api_get_nodef_attribute]", Node[node_idx].ID);
+                        api_report_writeErrorMsg(api_err_wrong_type, errmsg);
+                        return api_err_wrong_type;
+                }    
+            }
+            else
+            {
+                *value = API_NULL_VALUE_I;
+                sprintf(errmsg, "Attempting to extract node_head_tSeries for NODE %s, which is not an outfall [api.c -> api_get_nodef_attribute]", Node[node_idx].ID);
+                api_report_writeErrorMsg(api_err_wrong_type, errmsg);
+                return api_err_wrong_type;
+            }
+            break;
+
+        case nodef_head_tSeries_x1  :
+            if (Node[node_idx].type == OUTFALL)
+            {
+                // the outfall index
+                idx = Node[node_idx].subIndex;
+                tseries_idx = Outfall[idx].stageSeries;
+                if (tseries_idx >= 0)        
+                    *value = Tseries[tseries_idx].x1;
+                else
+                {
+                    *value = API_NULL_VALUE_I;
+                    sprintf(errmsg, "Extracting node_head_tSeries_x1 for NODE %s, which doesn't have a head timeseries [api.c -> api_get_nodef_attribute]", Node[node_idx].ID);
+                    api_report_writeErrorMsg(api_err_wrong_type, errmsg);
+                    return api_err_wrong_type;   
+                }
+                break;
+            }    
+            else
+            {
+                *value = API_NULL_VALUE_I;
+                sprintf(errmsg, "Attempting to extract node_head_tSeries_x1 for NODE %s, which is not an outfall [api.c -> api_get_nodef_attribute]", Node[node_idx].ID);
+                api_report_writeErrorMsg(api_err_wrong_type, errmsg);
+                return api_err_wrong_type;
+            }
+            break;
+
+        case nodef_head_tSeries_x2  :
+           if (Node[node_idx].type == OUTFALL)
+            {
+                // the outfall index
+                idx = Node[node_idx].subIndex;
+                tseries_idx = Outfall[idx].stageSeries;
+                if (tseries_idx >= 0)        
+                    *value = Tseries[tseries_idx].x2;
+                else
+                {
+                    *value = API_NULL_VALUE_I;
+                    sprintf(errmsg, "Extracting node_head_tSeries_x2 for NODE %s, which doesn't have a head timeseries [api.c -> api_get_nodef_attribute]", Node[node_idx].ID);
+                    api_report_writeErrorMsg(api_err_wrong_type, errmsg);
+                    return api_err_wrong_type;   
+                }
+                break;
+            }    
+            else
+            {
+                *value = API_NULL_VALUE_I;
+                sprintf(errmsg, "Attempting to extract node_head_tSeries_x2 for NODE %s, which is not an outfall [api.c -> api_get_nodef_attribute]", Node[node_idx].ID);
+                api_report_writeErrorMsg(api_err_wrong_type, errmsg);
+                return api_err_wrong_type;
+            }
+            break;
+
+
         case nodef_invertElev  :
             *value = FTTOM(Node[node_idx].invertElev);
             break;
@@ -573,7 +673,7 @@ int DLLEXPORT api_get_nodef_attribute(
                 case OUTFALL :
                     error = api_get_headBC(node_idx, StartDateTime, value);
                     if (error) return error;
-                    *value -= FTTOM(Node[node_idx].invertElev);
+                    //*value -= FTTOM(Node[node_idx].invertElev);
                     break;
                 default :
                     *value = FTTOM(Node[node_idx].initDepth);
@@ -620,9 +720,13 @@ int DLLEXPORT api_get_nodef_attribute(
             }
             break;
 
+                
         case nodef_extInflow_tSeries :
             if (Node[node_idx].extInflow)
-                *value = Node[node_idx].extInflow->tSeries;
+            {
+                // printf(" in api_get_nodef_attribute node+idx, tseries %d %d \n", node_idx,Node[node_idx].extInflow->tSeries);
+                *value = Node[node_idx].extInflow->tSeries;  
+            }
             else
             {
                 *value = API_NULL_VALUE_I;
@@ -942,8 +1046,7 @@ int DLLEXPORT api_get_nodef_attribute(
     // else if (attr == nodef_extInflow_basePat_type)
     // {
     //     //printf("   nodef_extInflow_basePat_type attr = 14 \n");
-    //     bpat = Node[node_idx].extInflow->basePat;
-        
+    //     bpat = Node[node_idx].extInflow->basePat;  
     //     //printf(" bpat %d",bpat);
     //     if (bpat >= 0) // baseline pattern exists
     //         *value = Pattern[bpat].type;
@@ -1062,7 +1165,6 @@ int DLLEXPORT api_get_nodef_attribute(
     // // brh20211207s
     // //else if (attr == node_depth)
     // else if (attr == nodef_newDepth)
-
     // {
     //     // printf("   node_depth = 24 \n");
     //     // printf("   nodef_newDepth attr = 24 \n");
@@ -1112,7 +1214,14 @@ int DLLEXPORT api_get_linkf_attribute(
     error = check_api_is_initialized("api_get_linkf_attribute");
     if (error) return error;
 
+    //printf(" ****** in api_get_linkf_attribute  %d \n ",attr);
+
+// the following are in the order of the enumeration in define_api_keys.f90 and api.h
     switch (attr) {
+
+        case linkf_ID :
+            *value = link_idx;
+            break;
 
         case linkf_subIndex :
             *value = Link[link_idx].subIndex;
@@ -1120,10 +1229,6 @@ int DLLEXPORT api_get_linkf_attribute(
         
         case linkf_direction :
             *value = Link[link_idx].direction;
-            break;
-
-        case linkf_type : 
-            *value = Link[link_idx].type;
             break;
 
         case linkf_node1 :
@@ -1142,83 +1247,60 @@ int DLLEXPORT api_get_linkf_attribute(
             *value = FTTOM(Link[link_idx].offset2);
             break;
 
-        case linkf_xsect_type :
-            *value = Link[link_idx].xsect.type;
-            break;
-
-        case linkf_xsect_wMax :
-            *value = FTTOM(Link[link_idx].xsect.wMax); 
-            break;
-
-        case linkf_xsect_yBot :
-            *value = FTTOM(Link[link_idx].xsect.yBot);
-            break;
-
-        case linkf_xsect_yFull : 
-            *value = FTTOM(Link[link_idx].xsect.yFull);
-            break;
-
         case linkf_q0 :
             *value = CFTOCM(Link[link_idx].q0);
+            break;    
+
+        case linkf_flow :
+            *value = CFTOCM(Link[link_idx].newFlow);
+            break;
+
+        case linkf_depth :
+            *value = FTTOM(Link[link_idx].newDepth);
+            break;
+
+        case linkf_volume :
+            *value = CFTOCM(Link[link_idx].newVolume);
+            break;
+
+        case linkf_froude :
+            *value = Link[link_idx].froude;
             break;
         
-        case linkf_sub_type :
-            switch (Link[link_idx].type) {
-                case CONDUIT :
-                    *value = API_NULL_VALUE_I;
-                    break;
-                case ORIFICE :
-                    *value = Orifice[Link[link_idx].subIndex].type;
-                    break;
-                case WEIR :
-                    *value = Weir[Link[link_idx].subIndex].type;
-                    break;
-                case OUTLET :
-                    *value = Outlet[Link[link_idx].subIndex].curveType;
-                    break;
-                case PUMP :
-                    *value = Pump[Link[link_idx].subIndex].type;
-                    break;
-                default :
-                    *value = 0;
-            }
+        case linkf_setting :
+            *value = Link[link_idx].setting;
             break;
 
-        case linkf_conduit_roughness :
-            switch (Link[link_idx].type) {
-                case CONDUIT :
-                    *value = Conduit[Link[link_idx].subIndex].roughness;
-                    break;
-                default :
-                    *value = 0;
-            }    
+        case linkf_targetsetting :
+            *value = Link[link_idx].targetSetting;
             break;
 
-        case linkf_conduit_length : 
-            switch (Link[link_idx].type) {
-                case CONDUIT :
-                    *value = FTTOM(Conduit[Link[link_idx].subIndex].length);
-                    break;
-                case ORIFICE :
-                    *value = 0.01;
-                    break;
-                case WEIR :
-                    *value = 0.01;
-                case OUTLET :
-                    *value = 0.01;
-                    break;
-                case PUMP :
-                    *value = 0.01;
-                    break;
-                default :
-                    *value = 0;
-            }
+        case linkf_timelastset :
+            *value = Link[link_idx].timeLastSet;
+            break;
+
+        case linkf_left_slope :
+            *value = api->double_vars[api_left_slope][link_idx];
+            break;
+
+        case linkf_right_slope :
+            *value = api->double_vars[api_right_slope][link_idx];
             break;
 
         case linkf_weir_end_contractions :
             switch (Link[link_idx].type) {
                 case WEIR :
                     *value = Weir[Link[link_idx].subIndex].endCon;
+                    break;
+                default :
+                    *value = 0;
+            }
+            break;
+
+        case linkf_weir_side_slope :
+            switch (Link[link_idx].type) {
+                case WEIR :
+                    *value = Weir[Link[link_idx].subIndex].slope;
                     break;
                 default :
                     *value = 0;
@@ -1282,8 +1364,8 @@ int DLLEXPORT api_get_linkf_attribute(
                     *value = 0;
             }
             break;
-        
-        case linkf_yOn :
+
+       case linkf_yOn :
             switch (Link[link_idx].type) {
                 case PUMP :
                     *value = Pump[Link[link_idx].subIndex].yOn;
@@ -1303,56 +1385,108 @@ int DLLEXPORT api_get_linkf_attribute(
             }
             break;
 
-        case linkf_weir_side_slope :
+        case linkf_conduit_roughness :
             switch (Link[link_idx].type) {
+                case CONDUIT :
+                    *value = Conduit[Link[link_idx].subIndex].roughness;
+                    break;
+                default :
+                    *value = 0;
+            }    
+            break;
+
+        case linkf_conduit_length : 
+            switch (Link[link_idx].type) {
+                case CONDUIT :
+                    *value = FTTOM(Conduit[Link[link_idx].subIndex].length);
+                    break;
+                case ORIFICE :
+                    *value = 0.01;
+                    break;
                 case WEIR :
-                    *value = Weir[Link[link_idx].subIndex].slope;
+                    *value = 0.01;
+                case OUTLET :
+                    *value = 0.01;
+                    break;
+                case PUMP :
+                    *value = 0.01;
                     break;
                 default :
                     *value = 0;
             }
             break;
 
-        case linkf_flow :
-            *value = CFTOCM(Link[link_idx].newFlow);
+        case linkf_rptFlag :
+            if (Link[link_idx].rptFlag)
+                *value = 1;
+            else
+                *value = 0; 
+            break;  
+
+        case linkf_commonBreak :
+            // placeholder with no action
+            *value = 0;
             break;
 
-        case linkf_depth :
-            *value = FTTOM(Link[link_idx].newDepth);
+        case linkf_type : 
+            *value = Link[link_idx].type;
             break;
 
-        case linkf_volume :
-            *value = CFTOCM(Link[link_idx].newVolume);
+        case linkf_sub_type :
+            switch (Link[link_idx].type) {
+                case CONDUIT :
+                    *value = API_NULL_VALUE_I;
+                    break;
+                case ORIFICE :
+                    *value = Orifice[Link[link_idx].subIndex].type;
+                    break;
+                case WEIR :
+                    *value = Weir[Link[link_idx].subIndex].type;
+                    break;
+                case OUTLET :
+                    *value = Outlet[Link[link_idx].subIndex].curveType;
+                    break;
+                case PUMP :
+                    *value = Pump[Link[link_idx].subIndex].type;
+                    break;
+                default :
+                    *value = 0;
+            }
             break;
 
-        case linkf_froude :
-            *value = Link[link_idx].froude;
+        case linkf_typeBreak :
+            // placehoder with no action
+            *value = 0;
             break;
 
-        case linkf_setting :
-            *value = Link[link_idx].setting;
-            break;
-
-        case linkf_left_slope :
-            *value = api->double_vars[api_left_slope][link_idx];
-            break;
-
-        case linkf_right_slope :
-            *value = api->double_vars[api_right_slope][link_idx];
+        case linkf_xsect_type :
+            *value = Link[link_idx].xsect.type;
             break;
 
         case linkf_geometry :
-            printf(" ****** api_get_linkf_attribute called for unsupported attr = linkf_geometry at 2875 %d ",attr);
+            printf(" ****** api_get_linkf_attribute called for unsupported attr = linkf_geometry at 2875 %d \n ",attr);
             break;
-            case linkf_rptFlag :
-                if (Link[link_idx].rptFlag)
-                    *value = 1;
-                else
-                    *value = 0; 
-            break;        
+
+        case linkf_xsect_wMax :
+            *value = FTTOM(Link[link_idx].xsect.wMax); 
+            break;
+
+        case linkf_xsect_yBot :
+            *value = FTTOM(Link[link_idx].xsect.yBot);
+            break;
+
+        case linkf_xsect_yFull : 
+            *value = FTTOM(Link[link_idx].xsect.yFull);
+            break;
+
+        case linkf_transectid :
+            *value = Link[link_idx].xsect.transect;
+            break;
+        
+              
         default :             
-            printf(" ****** api_get_linke_attribute called without supported attr at 837954 %d ",attr);
-            *value = API_NULL_VALUE_I;               
+            printf(" ****** api_get_linkf_attribute called without supported attr at 837954 %d \n ",attr);
+            *value = API_NULL_VALUE_I;              
     }
 
     // if (attr == linkf_subIndex)
@@ -1872,20 +2006,41 @@ int DLLEXPORT api_get_next_entry_table(
 
 //===============================================================================
 int DLLEXPORT api_get_next_entry_tseries(
-    int tseries_idx)
+    int tseries_idx, double timemax)
 //===============================================================================
 {
     int success;
     double x2, y2;
 
+    success = TRUE;
+    // store the present upper values of time series x=time, y=value
     x2 = Tseries[tseries_idx].x2;
     y2 = Tseries[tseries_idx].y2;
-    success = table_getNextEntry(&(Tseries[tseries_idx]), &(Tseries[tseries_idx].x2), &(Tseries[tseries_idx].y2));
-    if (success == TRUE)
+
+    //printf("y2, x2, timemax %g %g %g \n ",y2, x2, timemax);
+
+    // only get a new table entry if the present upper time (x2) is less than the maximum time.
+    if (x2 < timemax)
     {
-        Tseries[tseries_idx].x1 = x2;
-        Tseries[tseries_idx].y1 = y2;
+        success = table_getNextEntry(&(Tseries[tseries_idx]), &(Tseries[tseries_idx].x2), &(Tseries[tseries_idx].y2));
+        // overwrite the x1,y1 with the old values for x2, y2
+        // otherwise, no changes.
+        if (success == TRUE)
+        {
+            Tseries[tseries_idx].x1 = x2;
+            Tseries[tseries_idx].y1 = y2;
+        }
     }
+
+    // // only overwrite the time
+    // if (success == TRUE)
+    // {
+    //     if (x2 < timemax) 
+    //     {
+    //         Tseries[tseries_idx].x1 = x2;
+    //         Tseries[tseries_idx].y1 = y2;
+    //     }      
+    // }
     return success;
 }
 

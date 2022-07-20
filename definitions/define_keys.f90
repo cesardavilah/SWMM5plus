@@ -221,6 +221,12 @@
         enumerator :: DepthValue
         enumerator :: VolumeValue
         enumerator :: AreaValue
+        !% keys for initial depth distribution
+        enumerator :: LinearlyVaryingDepth
+        enumerator :: UniformDepth
+        enumerator :: ExponentialDepth
+        enumerator :: FixedHead
+        !% last items for bookkeeping
         enumerator :: undefinedKey
         enumerator :: keys_lastplusone
     end enum
@@ -419,6 +425,10 @@
         reverseKey(DepthValue)  = 'DepthValue'
         reverseKey(VolumeValue) = 'VolumeValue'
         reverseKey(AreaValue)   = 'AreaValue'
+        reverseKey(LinearlyVaryingDepth)   = 'LinearlyVaryingDepth'
+        reverseKey(UniformDepth)           = 'UniformDepth'
+        reverseKey(ExponentialDepth)       = 'ExponentialDepth'
+        reverseKey(FixedHead)              = 'FixedHead'
         reverseKey(undefinedKey)= 'undefinedKey'
         reverseKey(keys_lastplusone) = 'keys_lastplusone'
 

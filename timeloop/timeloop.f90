@@ -172,7 +172,7 @@ contains
                 !% --- note that thisP and thisBC must be the same size or there is something wrong
                 thisP   => elemP(1:npack,ep_BClat)
                 thisBC  => BC%P%BClat
-                Qlateral(thisP) = Qlateral(thisP) + BC%flowRI(thisBC)  
+                Qlateral(thisP) = Qlateral(thisP) + BC%flowR(thisBC,br_value)  
 
                 !% --- add subcatchment inflows
                 if (useHydrology) then 
@@ -970,7 +970,7 @@ contains
 
             !% ensure flowrate used for limiter is  positive and non-zero
             !tinyQ(:) = setting%Eps%Velocity
-            BCQ(:) = max( abs(BC%FlowRI(BC%P%BCup)), setting%Eps%Velocity)
+            BCQ(:) = max( abs(BC%FlowR(BC%P%BCup,br_value)), setting%Eps%Velocity)
 
             !print *, 'BCQ', BCQ
 

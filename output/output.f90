@@ -462,6 +462,7 @@ contains
         if (setting%Output%DataOut%isHydRadiusOut)               N_OutTypeElem =  N_OutTypeElem + 1
         if (setting%Output%DataOut%isPerimeterOut)               N_OutTypeElem =  N_OutTypeElem + 1
         if (setting%Output%DataOut%isSlotWidthOut)               N_OutTypeElem =  N_OutTypeElem + 1
+        if (setting%Output%DataOut%isSlotVolumeOut)              N_OutTypeElem =  N_OutTypeElem + 1
         if (setting%Output%DataOut%isSlotDepthOut)               N_OutTypeElem =  N_OutTypeElem + 1
         if (setting%Output%DataOut%isTopWidthOut)                N_OutTypeElem =  N_OutTypeElem + 1
         if (setting%Output%DataOut%isVelocityOut)                N_OutTypeElem =  N_OutTypeElem + 1
@@ -627,6 +628,15 @@ contains
             output_typeUnits_elemR(ii) = ' '
             output_typeProcessing_elemR(ii) = AverageElements
         end if
+
+        ! --- Slot Volume
+        if (setting%Output%DataOut%isSlotVolumeOut)  then  
+        ii = ii+1
+            output_types_elemR(ii) = er_SlotVolume
+            output_typenames_elemR(ii) = 'SlotVolume'
+            output_typeUnits_elemR(ii) = 'm^3'
+            output_typeProcessing_elemR(ii) = AverageElements
+        end if       
 
         
         !% -- store 'time' for use in output
