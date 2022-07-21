@@ -376,6 +376,8 @@ module define_indexes
         enumerator :: er_InterpWeight_dH            !% interpolation Weight, downstream for head
         enumerator :: er_InterpWeight_uQ            !% interpolation Weight, upstream, for flowrate
         enumerator :: er_InterpWeight_dQ            !% interpolation Weight, downstream, for flowrate
+        enumerator :: er_InterpWeight_uP            !% interpolation Weight, upstream, for Preissmann number
+        enumerator :: er_InterpWeight_dP            !% interpolation Weight, downstream, for Preissmann number
         enumerator :: er_Ksource                    !% k source term for AC solver
         enumerator :: er_Length                     !% length of element (static)
         enumerator :: er_ones                       !% vector of ones (useful with sign function)
@@ -481,7 +483,8 @@ module define_indexes
         enumerator :: ep_BClat                      !% all elements with lateral BC
         enumerator :: ep_JB_DownStreamJB            !% all the downstream JB elements 
         enumerator :: ep_CC_DownstreamJbAdjacent    !% all CC element downstream of a JB 
-        enumerator :: ep_Closed_Elements            !% all closed elements    
+        enumerator :: ep_Closed_Elements_CC         !% all closed CC elements 
+        enumerator :: ep_Closed_Elements_JB         !% all closed JB elements    
         enumerator :: ep_Output_Elements            !% all output elements -- local index   
         enumerator :: ep_CC_Q_NOTsmalldepth        !% all Q conduits used for CFL computation 
         enumerator :: ep_lastplusone !% must be last enum item

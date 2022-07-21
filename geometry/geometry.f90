@@ -48,7 +48,7 @@ module geometry
             integer, intent(in) :: whichTM
             integer, pointer :: elemPGx(:,:), npack_elemPGx(:), col_elemPGx(:)
             integer, pointer :: thisColP_surcharged, thisColP_NonSurcharged, thisColP_all
-            integer, pointer :: thisColP_JM, thisColP_JB, thisColP_ClosedElems
+            integer, pointer :: thisColP_JM, thisColP_JB, thisColP_Closed_CC, thisColP_Closed_JB
             logical :: isreset
             integer, allocatable :: tempP(:) !% debugging
             character(64) :: subroutine_name = 'geometry_toplevel'
@@ -71,7 +71,8 @@ module geometry
                     thisColP_surcharged    => col_elemP(ep_Surcharged_ALLtm)
                     thisColP_NonSurcharged => col_elemP(ep_NonSurcharged_ALLtm)
                     thisColP_all           => col_elemP(ep_ALLtm)
-                    thisColP_ClosedElems   => col_elemP(ep_Closed_Elements)
+                    thisColP_Closed_CC     => col_elemP(ep_Closed_Elements_CC)
+                    thisColP_Closed_JB     => col_elemP(ep_Closed_Elements_JB)
                 case (ETM)
                     elemPGx                => elemPGetm(:,:)
                     npack_elemPGx          => npack_elemPGetm(:)
@@ -81,7 +82,8 @@ module geometry
                     thisColP_surcharged    => col_elemP(ep_Surcharged_ETM)
                     thisColP_NonSurcharged => col_elemP(ep_NonSurcharged_ETM)
                     thisColP_all           => col_elemP(ep_ETM)
-                    thisColP_ClosedElems   => col_elemP(ep_Closed_Elements)
+                    thisColP_Closed_CC     => col_elemP(ep_Closed_Elements_CC)
+                    thisColP_Closed_JB     => col_elemP(ep_Closed_Elements_JB)
                 case (AC)
                     elemPGx                => elemPGac(:,:)
                     npack_elemPGx          => npack_elemPGac(:)
@@ -91,7 +93,8 @@ module geometry
                     thisColP_surcharged    => col_elemP(ep_Surcharged_AC)
                     thisColP_NonSurcharged => col_elemP(ep_NonSurcharged_AC)
                     thisColP_all           => col_elemP(ep_AC)
-                    thisColP_ClosedElems   => col_elemP(ep_Closed_Elements)
+                    thisColP_Closed_CC     => col_elemP(ep_Closed_Elements_CC)
+                    thisColP_Closed_JB     => col_elemP(ep_Closed_Elements_JB)
                 case default
                     print *, 'CODE ERROR: time march type unknown for # ', whichTM
                     print *, 'which has key ',trim(reverseKey(whichTM))
@@ -222,7 +225,9 @@ module geometry
         
         !% make adjustments for slots on closed elements only for ETM
         if (whichTM .eq. ETM) then
-            call geo_slot_adjustments (thisColP_ClosedElems,thisColP_JM)
+            call geo_CC_slot_adjustments (thisColP_Closed_CC)
+
+            call geo_JB_slot_computation_ETM(thisColP_JM)
         end if
 
         !% Set JM values that are not otherwise defined
@@ -283,8 +288,7 @@ module geometry
             real(8), pointer :: volume(:), zBtm(:), Kfac(:), dHdA(:), ell(:)
             real(8), pointer :: zCrown(:), fullArea(:), fulldepth(:), fullperimeter(:)
             real(8), pointer :: fullhyddepth(:)
-            real(8), pointer :: grav, TargetPCelerity, PreissmannAlpha
-            integer, pointer :: SlotMethod
+            real(8), pointer :: grav
             integer :: tB, ii, kk
         !% branchsign assume branches are ordered as nominal inflow, outflow, inflow...
         !real(8) :: branchsign(6) = [+oneR,-oneR,+oneR,-oneR,+oneR,-oneR]
@@ -324,9 +328,6 @@ module geometry
             BranchExists  => elemSI(:,esi_JunctionBranch_Exists)
             thisSolve     => elemI(:,ei_tmType)
             grav          => setting%Constant%gravity
-            SlotMethod    => setting%PreissmannSlot%PreissmannSlotMethod
-            TargetPCelerity => setting%PreissmannSlot%TargetPreissmannCelerity
-            PreissmannAlpha => setting%PreissmannSlot%PreissmannAlpha
         !%------------------------------------------------------------------
 
         if (Npack > 0) then
@@ -364,26 +365,9 @@ module geometry
                            
                             
                             !% compute provisional depth
-                            depth(tB) = head(tB) - zBtm(tB)
-                            elemYN(tB,eYN_isSlot)   = .false.
+                            depth(tB)  = head(tB) - zBtm(tB)
                             
                             if (depth(tB) .ge. fulldepth(tB)) then
-
-                                if (setting%Solver%SolverSelect == ETM) then
-                                    elemR(tB,er_SlotDepth) = depth(tB) - fulldepth(tB)   
-                                    select case (SlotMethod)
-                                        case (StaticSlot)
-                                        elemR(tB,er_Preissmann_Number) =  oneR
-                                        case (DynamicSlot)
-                                        elemR(tB,er_Preissmann_Number) = TargetPCelerity / (PreissmannAlpha * sqrt(grav * elemR(tB,er_ell_max)))
-                                    end select
-                                    elemR(tB,er_Preissmann_Celerity) = TargetPCelerity / elemR(tB,er_Preissmann_Number) 
-                                    elemR(tB,er_SlotArea)            = (elemR(tB,er_SlotDepth) * (elemR(tB,er_Preissmann_Number)**twoR) * grav * fullArea(tB)) / (TargetPCelerity ** twoR)
-                                    elemR(tB,er_SlotWidth)           = elemR(tB,er_SlotArea) / elemR(tB,er_SlotDepth)
-                                    elemR(tB,er_SlotVolume)          = elemR(tB,er_SlotArea) * elemR(tB,er_Length)
-                                    elemYN(tB,eYN_isSlot)            = .true.
-
-                                end if
                                 !% surcharged or incipient surcharged
                                 depth(tB)     = fulldepth(tB)
                                 area(tB)      = fullArea(tB)
@@ -1450,27 +1434,26 @@ subroutine geo_head_from_ell (thisColP)
 !%==========================================================================
 !%==========================================================================
 !%
-    subroutine geo_slot_adjustments (thisColP_CC, thisColP_JM)
+    subroutine geo_CC_slot_adjustments (thisColP_closed_CC)
         !%-----------------------------------------------------------------------------
         !% Description:
         !% This subroutine adds back the slot geometry in all the closed elements
         !%-----------------------------------------------------------------------------
-        integer, intent(in) :: thisColP_CC, thisColP_JM
-        integer, pointer    :: thisP(:), Npack, tM, BranchExists(:)
+        integer, intent(in) :: thisColP_closed_CC
+        integer, pointer    :: thisP(:), Npack
         real(8), pointer    :: SlotWidth(:), SlotVolume(:), SlotDepth(:)
         real(8), pointer    :: volume(:), ell(:), depth(:), area(:), SlotArea(:)
         real(8), pointer    :: head(:), fullVolume(:), fullArea(:), fullDepth(:)
         real(8), pointer    :: Overflow(:), zbottom(:), ellMax(:), SlotHydRad(:)
         logical, pointer    :: isSlot(:)
-        integer :: tB, ii, kk
 
-        character(64) :: subroutine_name = 'geo_slot_adjustments'
+        character(64) :: subroutine_name = 'geo_CC_slot_adjustments'
         !%-----------------------------------------------------------------------------
         if (crashYN) return
         if (setting%Debug%File%geometry) &
             write(*,"(A,i5,A)") '*** enter ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
 
-        Npack      => npack_elemP(thisColP_CC)
+        Npack      => npack_elemP(thisColP_closed_CC)
         area       => elemR(:,er_Area)
         depth      => elemR(:,er_Depth)
         ell        => elemR(:,er_ell)
@@ -1492,8 +1475,7 @@ subroutine geo_head_from_ell (thisColP)
 
         !% CC slot adjustment
         if (Npack > 0) then
-            thisP    => elemP(1:Npack,thisColP_CC)
-
+            thisP    => elemP(1:Npack,thisColP_closed_CC)
             where (isSlot(thisP)) 
                 volume(thisP) = volume(thisP)  + SlotVolume(thisP)
                 area(thisP)   = area(thisP)    + SlotArea(thisP)
@@ -1503,29 +1485,9 @@ subroutine geo_head_from_ell (thisColP)
             end where 
         end if
 
-
-        Npack      => npack_elemP(thisColP_JM)
-        thisP      => elemP(1:Npack,thisColP_JM)
-        BranchExists  => elemSI(:,esi_JunctionBranch_Exists)
-        do ii=1,Npack
-        tM => thisP(ii) !% junction main ID
-            do kk=1,max_branch_per_node
-                tB = tM + kk !% junction branch ID
-                if (BranchExists(tB) == 1) then
-                    !% only when a branch exists.
-                    if (elemYN(tB,eYN_isSlot)) then
-                        volume(tB) = volume(tB)  + SlotVolume(tB)
-                        area(tB)   = area(tB)    + SlotArea(tB)
-                        depth(tB)  = depth(tB)   + SlotDepth(tB)
-                        Overflow(tB) = zeroR
-                    end if
-                end if
-            end do
-        end do
-
         if (setting%Debug%File%geometry) &
         write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
-    end subroutine geo_slot_adjustments
+    end subroutine geo_CC_slot_adjustments
 !%
 !%==========================================================================
 !%==========================================================================
@@ -1567,6 +1529,134 @@ subroutine geo_head_from_ell (thisColP)
         !%------------------------------------------------------------------
         !% Closing
     end subroutine geo_JM_values
+!%
+!%==========================================================================
+!%==========================================================================
+!%
+    subroutine geo_JB_slot_computation_ETM (thisColP_JM)
+        !%------------------------------------------------------------------
+        !% Description:
+        !%      Slot computation for Junction Branches
+        !%------------------------------------------------------------------
+        !% Declarations:
+            integer, intent(in) :: thisColP_JM
+            integer, pointer :: Npack, thisP(:), tM, BranchExists(:)
+            real(8), pointer :: area(:), depth(:), head(:), length(:), volume(:), zcrown(:)
+            real(8), pointer :: fullDepth(:), fullArea(:), fPNumber(:), PNumber(:), PCelerity(:)
+            real(8), pointer :: SlotWidth(:), SlotVolume(:), SlotDepth(:), SlotArea(:), ellMax(:)
+            real(8), pointer :: overflow(:), grav, TargetPCelerity, PreissmannAlpha
+            logical, pointer :: isSlot(:) , fSlot(:), isDnJB(:)
+            integer, pointer :: SlotMethod, fUp(:), fDn(:)
+            integer :: tB, ii, kk
+        !%------------------------------------------------------------------
+        !% Preliminaries:
+        !%------------------------------------------------------------------
+        !% Aliases
+            Npack         => npack_elemP(thisColP_JM)
+            area          => elemR(:,er_Area)
+            depth         => elemR(:,er_Depth)
+            head          => elemR(:,er_Head)
+            length        => elemR(:,er_Length)
+            fullArea      => elemR(:,er_FullArea)
+            fullDepth     => elemR(:,er_FullDepth)
+            overflow      => elemR(:,er_VolumeOverFlow)
+            volume        => elemR(:,er_Volume)
+            zCrown        => elemR(:,er_Zcrown)
+            ellMax        => elemR(:,er_ell_max)
+            fUp           => elemI(:,ei_Mface_uL)
+            fDn           => elemI(:,ei_Mface_dL)
+            BranchExists  => elemSI(:,esi_JunctionBranch_Exists)
+            grav          => setting%Constant%gravity
+        !% Slot Aliases
+            PNumber    => elemR(:,er_Preissmann_Number)
+            PCelerity  => elemR(:,er_Preissmann_Celerity)
+            SlotWidth  => elemR(:,er_SlotWidth)
+            SlotVolume => elemR(:,er_SlotVolume)
+            SlotDepth  => elemR(:,er_SlotDepth)
+            SlotArea   => elemR(:,er_SlotArea)
+            fPNumber   => faceR(:,fr_Preissmann_Number)
+            isSlot     => elemYN(:,eYN_isSlot)
+            isDnJB     => elemYN(:,eYN_isDownstreamJB)
+            fSlot      => faceYN(:,fYN_isSlot)
+            SlotMethod      => setting%PreissmannSlot%PreissmannSlotMethod
+            TargetPCelerity => setting%PreissmannSlot%TargetPreissmannCelerity
+            PreissmannAlpha => setting%PreissmannSlot%PreissmannAlpha
+        !%------------------------------------------------------------------
+
+        !% JB slot adjustment
+        if (Npack > 0) then
+            thisP  => elemP(1:Npack,thisColP_JM)
+            !% cycle through the all the main junctions and each of its branches
+            do ii=1,Npack
+                tM => thisP(ii) !% junction main ID
+                ! handle the upstream branches
+                do kk=1,max_branch_per_node,2
+                    tB = tM + kk  !% JB branch ID
+                    if (BranchExists(tB)==1) then
+                        !% initialize slot
+                        isSlot(tB)     = .false.
+                        SlotDepth(tB)  = zeroR
+                        SlotArea(tB)   = zeroR
+                        SlotWidth(tB)  = zeroR
+                        SlotVolume(tB) = zeroR
+                        PCelerity(tB)  = zeroR
+
+                        !% assuming a slot if the head is above the crown
+                        !% or the upstream CC is in a slot
+                        if (head(tB) .gt. zcrown(tB) .or. fSlot(fUp(tB))) then
+                            isSlot(tB)     = .true.
+                            fSlot(fUp(tB)) = .true.
+                            PCelerity(tB)  = TargetPCelerity / PNumber(tB)
+                            SlotDepth(tB)  = max(depth(tB) - fulldepth(tB), zeroR)   
+                            SlotArea(tB)   = (SlotDepth(tB) * (PNumber(tB)**twoR) * grav * &
+                                                fullArea(tB)) / (TargetPCelerity ** twoR)
+                            SlotVolume(tB) = SlotArea(tB) * length(tB)
+                            
+                            !% add the slot geometry back to previously solved geometry
+                            volume(tB) = volume(tB)  + SlotVolume(tB)
+                            area(tB)   = area(tB)    + SlotArea(tB)
+                            depth(tB)  = depth(tB)   + SlotDepth(tB)
+                            Overflow(tB) = zeroR
+                        end if
+                    end if
+                end do
+                !% handle the downstream branches
+                do kk=2,max_branch_per_node,2
+                    tB = tM + kk
+                    if (BranchExists(tB)==1) then
+                        !% initialize slot
+                        isSlot(tB)     = .false.
+                        SlotDepth(tB)  = zeroR
+                        SlotArea(tB)   = zeroR
+                        SlotWidth(tB)  = zeroR
+                        SlotVolume(tB) = zeroR
+                        PCelerity(tB)  = zeroR
+
+                        !% assuming a slot if the head is above the crown
+                        !% or the downstream CC is in a slot
+                        if (head(tB) .gt. zcrown(tB) .or. fSlot(fDn(tB))) then
+                            isSlot(tB)     = .true.
+                            fSlot(fDn(tB)) = .true.
+                            PCelerity(tB)  = TargetPCelerity / PNumber(tB)
+                            SlotDepth(tB)  = max(depth(tB) - fulldepth(tB), zeroR)    
+                            SlotArea(tB)   = (SlotDepth(tB) * (PNumber(tB)**twoR) * grav * &
+                                                fullArea(tB)) / (TargetPCelerity ** twoR)
+                            SlotVolume(tB) = SlotArea(tB) * length(tB)
+
+                            !% add the slot geometry back to previously solved geometry
+                            volume(tB) = volume(tB)  + SlotVolume(tB)
+                            area(tB)   = area(tB)    + SlotArea(tB)
+                            depth(tB)  = depth(tB)   + SlotDepth(tB)
+                            Overflow(tB) = zeroR
+                        end if
+                    end if
+                end do
+            end do
+        end if
+                  
+        !%------------------------------------------------------------------
+        !% Closing
+    end subroutine geo_JB_slot_computation_ETM
 !%
 !%==========================================================================
 !% END OF MODULE

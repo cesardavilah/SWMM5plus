@@ -1028,7 +1028,7 @@ module adjust
             case (ALLtm)
                 thisCol => col_elemP(ep_CC_ALLtm_surcharged)
             case (ETM)
-                thisCol => col_elemP(ep_Closed_Elements)
+                thisCol => col_elemP(ep_Closed_Elements_CC)
             case (AC)
                 thisCol => col_elemP(ep_CC_AC_surcharged)
             case default
@@ -1066,13 +1066,6 @@ module adjust
 
         !%-------------------------------------------------------------------
         !% find the cells that are surcharged
-            ! Vvalue(thisP) = elemHead(thisP) - multiplier * (elemEllMax(thisP)+Zbottom(thisP))
-            ! ! Vvalue(thisP) = elemHead(thisP) - (elemEllMax(thisP) + elemZbot(thisP))
-            ! where (Vvalue(thisP) > zeroR)
-                ! Vvalue(thisP) = oneR
-            ! elsewhere
-            !     Vvalue(thisP) = zeroR 
-            ! ! endwhere
 
             where (fSlot(mapUP(thisP)) .and. fSlot(mapDn(thisP)))
                 Vvalue(thisP) = oneR
@@ -1081,8 +1074,8 @@ module adjust
             endwhere
 
             !% identify the V-shape locations
-            Vvalue(thisP) =  (util_sign_with_ones(faceHeadDn(mapUp(thisP)) - elemHead(thisP)))      &
-                            *(util_sign_with_ones(faceHeadUp(mapDn(thisP)) - elemHead(thisP)))      &
+            Vvalue(thisP) =  (util_sign_with_ones_or_zero(faceHeadDn(mapUp(thisP)) - elemHead(thisP)))      &
+                            *(util_sign_with_ones_or_zero(faceHeadUp(mapDn(thisP)) - elemHead(thisP)))      &
                             * Vvalue(thisP)   
                     
             !% adjust where needed

@@ -394,7 +394,7 @@ module runge_kutta2
         !% compute slot for conduits only if ETM solver is used
         if (setting%Solver%SolverSelect == ETM) then
             !% all the closed conduit elements
-            thisPackCol => col_elemP(ep_Closed_Elements)
+            thisPackCol => col_elemP(ep_Closed_Elements_CC)
             Npack => npack_elemP(thisPackCol)
             if (Npack > 0) then
                 call ll_slot_computation_ETM (thisPackCol, Npack, istep)
@@ -742,15 +742,18 @@ module runge_kutta2
         !% Update the preissmann number at the end of an RK step
         !%-----------------------------------------------------------------------------
         integer, intent(in) :: whichTM
-        integer, pointer    :: thisCol, Npack, thisP(:), SlotMethod, fUp(:), fDn(:)
-        real(8), pointer    :: PNumber(:), fPNumber(:), Vvalue(:)
-
+        integer, pointer    :: thisCol_CC, thisCol_JB, thisCol_Diag
+        integer, pointer    :: Npack, thisP(:), SlotMethod, fUp(:), fDn(:)
+        real(8), pointer    :: PNumber(:), fPNumber(:), ellMax(:), PreissmannAlpha, TargetPCelerity, grav
+        logical, pointer    :: isSlot(:), fSlot(:)
         character(64) :: subroutine_name = 'rk2_update_preissmann_number'
         !%-----------------------------------------------------------------------------
         !% Preliminaries:
             select case (whichTM)
             case (ETM)
-                thisCol  => col_elemP(ep_Closed_Elements) 
+                thisCol_CC   => col_elemP(ep_Closed_Elements_CC)
+                thisCol_JB   => col_elemP(ep_Closed_Elements_JB)
+                thisCol_Diag => col_elemP(ep_Diag)
             case default
                 print *, 'CODE ERROR: time march type unknown for # ', whichTM
                 print *, 'which has key ',trim(reverseKey(whichTM))
@@ -758,48 +761,103 @@ module runge_kutta2
             end select
         !%------------------------------------------------------------------
         !% Aliases: 
-            Npack => npack_elemP(thisCol)
-            !% pointers to elemR columns
+        !% pointers to elemR columns
             PNumber    => elemR(:,er_Preissmann_Number)
+            ellMax     => elemR(:,er_ell_max)
+            isSlot     => elemYN(:,eYN_isSlot)
             !% pointers to elemI columns
+            fSlot      => faceYN(:,fYN_isSlot)
             fUp        => elemI(:,ei_Mface_uL)
             fDn        => elemI(:,ei_Mface_dL)
             !% pointer to faceR column
             fPNumber   => faceR(:,fr_Preissmann_Number)
             !% pointer to necessary settings struct
-            SlotMethod => setting%PreissmannSlot%PreissmannSlotMethod
+            grav            => setting%Constant%gravity
+            SlotMethod      => setting%PreissmannSlot%PreissmannSlotMethod
+            PreissmannAlpha => setting%PreissmannSlot%PreissmannAlpha
+            TargetPCelerity => setting%PreissmannSlot%TargetPreissmannCelerity
+            !% Colsed CC elements
+            Npack => npack_elemP(thisCol_CC)
+            if (Npack > 0) then
+                !% pointer packed element indexes
+                thisP => elemP(1:Npack,thisCol_CC)
+                select case (SlotMethod)
+                    case (StaticSlot)
+                        PNumber(thisP) = oneR
+                    case (DynamicSlot)
 
-            Vvalue     => elemR(:,er_Temp01)
+                        where (isSlot(thisP))
+                            !% get a new decreased preissmann number for the next time step only for surcharched elements
+                            PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
+                            ! PNumber(thisP) = max(PNumber(thisP) ** 1.0 - log(PNumber(thisP)), oneR)
+                        elsewhere
+                            PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
+                        end where
 
-            select case (SlotMethod)
+                        ! % update the preissmann number from using simple face interpolation
+                        PNumber(thisP) = max(onehalfR * (fPNumber(fUp(thisP)) + fPNumber(fDn(thisP))), oneR)
+                         
+                    case default
+                        !% should not reach this stage
+                        print*, 'In ', subroutine_name
+                        print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
+                        print *, 'which has key ',trim(reverseKey(SlotMethod))
+                        stop 38756
+                end select
+            end if
+            
+            !% Aliases: 
+            !% Colsed JB elements
+            Npack => npack_elemP(thisCol_JB)
+            if (Npack > 0) then
+                !% pointer packed element indexes
+                thisP => elemP(1:Npack,thisCol_JB)
+                select case (SlotMethod)
+                    case (StaticSlot)
+                        PNumber(thisP) = oneR
+                    case (DynamicSlot)
+                        !% get a new decreased preissmann number for the next time step only for surcharched elements
+                        where (isSlot(thisP))
+                            !% get a new decreased preissmann number for the next time step only for surcharched elements
+                            PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
+                        elsewhere
+                            PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
+                        end where
+                    case default
+                        !% should not reach this stage
+                        print*, 'In ', subroutine_name
+                        print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
+                        print *, 'which has key ',trim(reverseKey(SlotMethod))
+                        stop 38756
+                end select
+            end if
 
-            case (StaticSlot)
-
-            case (DynamicSlot)
-
-                if (Npack > 0) then
-                    !% pointer packed element indexes
-                    thisP => elemP(1:Npack,thisCol)
-                    !% get a new decreased preissmann number for the next time step
-                    ! PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
-                    where (elemYN(thisP,eYN_isSlot))
-                        ! PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
-                        PNumber(thisP) = max(PNumber(thisP) ** 1.0 - log(PNumber(thisP)), oneR)
-                    endwhere
-                    !% update all faces
-                    call face_interpolation(fp_all,dummy)
-                    !% update the preissmann number from using simple face interpolation
-                    PNumber(thisP) = max(onehalfR * (fPNumber(fUp(thisP)) + fPNumber(fDn(thisP))), oneR)
-                end if
-
-            case default
-                !% should not reach this stage
-                print*, 'In ', subroutine_name
-                print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
-                print *, 'which has key ',trim(reverseKey(SlotMethod))
-                stop 38756
-
-            end select
+            !% Aliases: 
+            !% All diagnostic elements
+            Npack => npack_elemP(thisCol_Diag)
+            if (Npack > 0) then
+                !% pointer packed element indexes
+                thisP => elemP(1:Npack,thisCol_Diag)
+                select case (SlotMethod)
+                    case (StaticSlot)
+                        PNumber(thisP) = oneR
+                    case (DynamicSlot)
+                        !% get a new decreased preissmann number for the next time step only 
+                        !% if an element upstream or downstream has a slot
+                        where ((fSlot(fUp(thisP))) .or. (fSlot(fDn(thisP))))
+                            !% get a new decreased preissmann number for the next time step only for surcharched elements
+                            PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
+                        elsewhere
+                            PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
+                        end where
+                    case default
+                        !% should not reach this stage
+                        print*, 'In ', subroutine_name
+                        print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
+                        print *, 'which has key ',trim(reverseKey(SlotMethod))
+                        stop 38756
+                end select
+            end if
 
     end subroutine rk2_update_preissmann_number
 !%   

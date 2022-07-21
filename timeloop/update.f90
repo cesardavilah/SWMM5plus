@@ -222,12 +222,12 @@ module update
         !%-----------------------------------------------------------------------------
         character(64) :: subroutine_name = 'update_interpolation_weights_element'
         integer, intent(in) :: thisCol, whichTM
-        integer, pointer :: Npack, Npack2, thisCol_AC,  thisCol_ClosedElems, thisP(:), thisP2(:)
+        integer, pointer :: Npack, Npack2, thisCol_AC,  thisCol_ClosedElems, thisP(:), thisP2(:), fUp(:), fDn(:)
         real(8), pointer :: velocity(:), wavespeed(:), depth(:), length(:), QLateral(:)
         real(8), pointer :: PCelerity(:), SlotVolume(:),SlotWidth(:), fullArea(:)
         real(8), pointer :: w_uQ(:), w_dQ(:),  w_uG(:), w_dG(:),  w_uH(:), w_dH(:), w_uP(:), w_dP(:), Area(:)
         real(8), pointer :: Fr(:), grav !BRHbugfix20210811 test
-        logical, pointer :: isSlot(:)
+        logical, pointer :: isSlot(:), fSlot(:)
         integer :: ii
         !%-----------------------------------------------------------------------------
         if (crashYN) return
@@ -245,8 +245,14 @@ module update
         w_dG      => elemR(:,er_InterpWeight_dG)
         w_uH      => elemR(:,er_InterpWeight_uH)
         w_dH      => elemR(:,er_InterpWeight_dH)
+        w_uP      => elemR(:,er_InterpWeight_uP)
+        w_dP      => elemR(:,er_InterpWeight_dP)
         Fr        => elemR(:,er_FroudeNumber)  !BRHbugfix20210811 test
         isSlot    => elemYN(:,eYN_isSlot)
+
+        fSlot    => faceYN(:,fYN_isSlot)
+        fUp      => elemI(:,ei_Mface_uL)
+        fDn      => elemI(:,ei_Mface_dL)
 
         PCelerity  => elemR(:,er_Preissmann_Celerity)
         SlotVolume => elemR(:,er_SlotVolume)
@@ -263,7 +269,7 @@ module update
             case (ALLtm)
                 thisCol_AC          =>  col_elemP(ep_Surcharged_AC)
             case (ETM)
-                thisCol_ClosedElems =>  col_elemP(ep_Closed_Elements)
+                thisCol_ClosedElems =>  col_elemP(ep_Closed_Elements_CC)
             case (AC)
                 thisCol_AC          =>  col_elemP(ep_Surcharged_AC)
             case default
@@ -299,12 +305,25 @@ module update
         !     end if
         end if
 
-        where (.not. isSlot(thisP))
-            w_uQ(thisP) = - onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) - wavespeed(thisP)) !bugfix SAZ 09212021 
-            w_dQ(thisP) = + onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) + wavespeed(thisP)) !bugfix SAZ 09212021 
-        elsewhere (isSlot(thisP))
-            w_uQ(thisP) = - onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) - PCelerity(thisP)) !bugfix SAZ 23022022 
-            w_dQ(thisP) = + onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) + PCelerity(thisP)) !bugfix SAZ 23022022 
+        ! where (.not. isSlot(thisP))
+        !     w_uQ(thisP) = - onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) - wavespeed(thisP)) !bugfix SAZ 09212021 
+        !     w_dQ(thisP) = + onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) + wavespeed(thisP)) !bugfix SAZ 09212021 
+        ! elsewhere (isSlot(thisP))
+        !     w_uQ(thisP) = - onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) - PCelerity(thisP)) !bugfix SAZ 23022022 
+        !     w_dQ(thisP) = + onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) + PCelerity(thisP)) !bugfix SAZ 23022022 
+        ! end where
+
+        !% HACK: testing different interpolation weights for slots
+        where (fSlot(fUp(thisP)))
+            w_uQ(thisP) = - onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) - PCelerity(thisP)) 
+        elsewhere
+            w_uQ(thisP) = - onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) - wavespeed(thisP)) 
+        end where
+
+        where (fSlot(fDn(thisP)))
+            w_dQ(thisP) = + onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) + PCelerity(thisP)) 
+        elsewhere
+            w_dQ(thisP) = + onehalfR * length(thisP)  / (abs(Fr(thisp)**0) * velocity(thisP) + wavespeed(thisP)) 
         end where
 
         !% apply limiters to timescales
@@ -367,8 +386,9 @@ module update
             integer, intent(in) :: thisCol
             integer, pointer    :: npack, thisP(:)
             integer             :: ii
-            real(8), pointer    :: grav, wavespeed(:), velocity(:), length(:), depth(:)
+            real(8), pointer    :: grav, wavespeed(:), PCelerity(:), velocity(:), length(:), depth(:)
             real(8), pointer    :: w_uQ(:), w_dQ(:), w_uG(:), w_dG(:), w_uH(:), w_dH(:)
+            logical, pointer    :: isSlot(:)
         !%------------------------------------------------------------------
         !% Aliases
             npack => npack_elemP(thisCol)
@@ -377,6 +397,7 @@ module update
             grav => setting%Constant%gravity
             velocity  => elemR(:,er_Velocity)
             wavespeed => elemR(:,er_WaveSpeed)
+            PCelerity => elemR(:,er_Preissmann_Celerity)
             depth     => elemR(:,er_ell)  !% modified hydraulic depth!
             length    => elemR(:,er_Length)
             w_uQ      => elemR(:,er_InterpWeight_uQ)
@@ -385,18 +406,19 @@ module update
             w_dG      => elemR(:,er_InterpWeight_dG)
             w_uH      => elemR(:,er_InterpWeight_uH)
             w_dH      => elemR(:,er_InterpWeight_dH)
+            isSlot    => elemYN(:,eYN_isSlot)
         !%------------------------------------------------------------------
         !% cycle through the branches to compute weights
         !print *, 'here in JB update '
         do ii=1,max_branch_per_node
             wavespeed(thisP+ii) = sqrt(grav * depth(thisP+ii))
 
-            where (.not. elemYN(thisP+ii,eYN_isSlot)) 
+            where (.not. isSlot(thisP+ii)) 
                 w_uQ(thisP+ii) = - onehalfR * length(thisP+ii)  / (velocity(thisP+ii) - wavespeed(thisP+ii))
                 w_dQ(thisP+ii) = + onehalfR * length(thisP+ii)  / (velocity(thisP+ii) + wavespeed(thisP+ii))
             elsewhere
-                w_uQ(thisP+ii) = - onehalfR * length(thisP+ii)  / (velocity(thisP+ii) - elemR(thisP+ii,er_Preissmann_Celerity))
-                w_dQ(thisP+ii) = + onehalfR * length(thisP+ii)  / (velocity(thisP+ii) + elemR(thisP+ii,er_Preissmann_Celerity))
+                w_uQ(thisP+ii) = - onehalfR * length(thisP+ii)  / (velocity(thisP+ii) - PCelerity(thisP+ii))
+                w_dQ(thisP+ii) = + onehalfR * length(thisP+ii)  / (velocity(thisP+ii) + PCelerity(thisP+ii))
             endwhere
             
 

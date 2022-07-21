@@ -4,6 +4,7 @@ module lowlevel_rk2
     use define_globals
     use define_indexes
     use define_keys
+    use face
     use utility, only: util_sign_with_ones
     use utility_output
 
@@ -1310,44 +1311,21 @@ module lowlevel_rk2
         fSlot(fUp(thisP)) = .false.
         fSlot(fDn(thisP)) = .false.
 
+        !% find out the slot volume/ area/ and the faces that are surcharged
         where (volume(thisP) > fullVolume(thisP))
             SlotVolume(thisP) = volume(thisP) - fullvolume(thisP)
             SlotArea(thisP)   = SlotVolume(thisP) / length(thisP)
-            isSlot(thisP)     = .true.
             fSlot(fUp(thisP)) = .true.
             fSlot(fDn(thisP)) = .true.
+            !% find the water height at the slot
+            SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
         end where
 
-        select case (SlotMethod)
-            case (StaticSlot)
-                !% find incipient surcharge  and non-surcharged elements reset the preissmann number
-                where (isSlot(thisP)) 
-                    PNumber(thisP) =  oneR
-                end where
-
-            case (DynamicSlot)
-                !% find incipient surcharge  and non-surcharged elements reset the preissmann number and celerity for dynamic slot
-                ! where ((SlotArea(thisP) .le. zeroR) .or. (AreaN0(thisP) .le. fullarea(thisP))) 
-                where ((SlotArea(thisP) .le. zeroR)) 
-                    PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
-                end where
-
-            case default
-                !% should not reach this stage
-                print*, 'In ', subroutine_name
-                print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
-                print *, 'which has key ',trim(reverseKey(SlotMethod))
-                stop 38756
-        end select
-
-        !% Slot Calculation
-        where (isSlot(thisP))
-            ! !% find the water height at the slot
-            SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
-            ! !% find the width of the slot
-            SlotWidth(thisP) = SlotArea(thisP) / SlotDepth(thisP) 
+        !% Any cell containing a face slot will get a slot and have a preissmann celerity
+        where (fSlot(fUp(thisP)) .and. fSlot(fDn(thisP)))
+            isSlot(thisP)     = .true.
             !% Preissmann Celerity
-            PCelerity(thisP) = TargetPCelerity / PNumber(thisP)   
+            PCelerity(thisP) = TargetPCelerity / PNumber(thisP)
         end where
 
     end subroutine ll_slot_computation_ETM

@@ -554,6 +554,9 @@ module face
 
             call face_interp_interior_set &
                 (fFlowSet, eFlowSet, er_InterpWeight_dQ, er_InterpWeight_uQ, facePackCol, Npack)
+                
+            call face_interp_interior_set &
+                (fPreissmenSet, ePreissmenSet, er_InterpWeight_dQ, er_InterpWeight_uQ, facePackCol, Npack)
 
             !% copy upstream to downstream storage at a face
             !% (only for Head and Geometry types)
@@ -569,10 +572,8 @@ module face
 
             !% reset all the hydraulic jump interior faces
             call jump_compute
-        else
-            !% only interpolate the preissmann
-            call face_interp_interior_set &
-                (fPreissmenSet, ePreissmenSet, er_InterpWeight_dQ, er_InterpWeight_uQ, facePackCol, Npack)
+        ! else
+            
         end if
         !%------------------------------------------------------------------
         !% Closing

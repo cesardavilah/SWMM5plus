@@ -1766,8 +1766,8 @@ contains
             !% set the JB to time_march for use with splitting between AC
             !% and ETM in rk2_extrapolate_to_fullstep_ETM, rk2_restore_to_midstep_ETM
             !% rk2_interpolate_to_halfstep_AC, k2_restore_to_fullstep_AC
-            elemI(JBidx,ei_HeqType) = time_march
-            elemI(JBidx,ei_QeqType) = time_march
+            elemI(JBidx,ei_HeqType) = notused
+            elemI(JBidx,ei_QeqType) = notused
 
             !% Junction branch k-factor
             !% If the user does not input the K-factor for junction branches entrance/exit loses then
