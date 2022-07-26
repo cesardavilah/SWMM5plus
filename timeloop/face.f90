@@ -556,7 +556,7 @@ module face
                 (fFlowSet, eFlowSet, er_InterpWeight_dQ, er_InterpWeight_uQ, facePackCol, Npack)
 
             call face_interp_interior_set &
-                (fPreissmenSet, ePreissmenSet, er_InterpWeight_dQ, er_InterpWeight_uQ, facePackCol, Npack)
+                (fPreissmenSet, ePreissmenSet, er_InterpWeight_dP, er_InterpWeight_uP, facePackCol, Npack)
                 
             !% copy upstream to downstream storage at a face
             !% (only for Head and Geometry types)

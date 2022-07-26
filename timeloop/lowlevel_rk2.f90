@@ -1300,8 +1300,7 @@ module lowlevel_rk2
         PreissmannAlpha     => setting%PreissmannSlot%PreissmannAlpha
         cfl                 => setting%VariableDT%CFL_target
         grav                => setting%Constant%gravity
-
-        Vvalue     => elemR(:,er_Temp01)
+        Vvalue              => elemR(:,er_Temp01)
 
         !% initialize slot
         SlotVolume(thisP) = zeroR
@@ -1312,7 +1311,7 @@ module lowlevel_rk2
         isSlot(thisP)     = .false.
         fSlot(fUp(thisP)) = .false.
         fSlot(fDn(thisP)) = .false.
-
+        
         !% smooth the preissmann number from using simple face interpolation
         PNumber(thisP) = max(onehalfR * (fPNumber(fUp(thisP)) + fPNumber(fDn(thisP))), oneR)
         
@@ -1322,16 +1321,42 @@ module lowlevel_rk2
             SlotArea(thisP)   = SlotVolume(thisP) / length(thisP)
             fSlot(fUp(thisP)) = .true.
             fSlot(fDn(thisP)) = .true.
-            isSlot(thisP)     = .true.
+        end where
+
+        !% Calculate the preissmann celerity with the already set preissmann number from
+        !% previous time/rk step. Also, any cell containig two slot faces will also designated
+        !% to have a slot. Which ensures a preissmann celerity in that element.
+        where (fSlot(fUp(thisP)) .and. fSlot(fDn(thisP)))
+            isSlot(thisP)    = .true.
+            !% Preissmann Celerity
+            PCelerity(thisP) = min(TargetPCelerity / PNumber(thisP), TargetPCelerity)
             !% find the water height at the slot
             SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
         end where
 
-        !% Preissmann Celerity will be calculated any CC element containing a face slot
-        where (fSlot(fUp(thisP)) .or. fSlot(fDn(thisP)))
-            !% Preissmann Celerity
-            PCelerity(thisP) = min(TargetPCelerity / PNumber(thisP), TargetPCelerity)
-        end where
+        !% Now adjust the preissmann number for the next RK-step
+        select case (SlotMethod)
+            !% for a static slot, the preissmann number will always be one.
+            case (StaticSlot)
+                PNumber(thisP) = oneR
+
+            !% for dynamic slot, preissmann number is adjusted
+            case (DynamicSlot)
+                where (isSlot(thisP))
+                    !% get a new decreased preissmann number for the next time step for elements having a slot
+                    PNumber(thisP) = max((PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP), oneR)
+                elsewhere
+                    !% reset the preissmann number for every CC element not having a slot
+                    PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
+                end where
+
+            case default
+                !% should not reach this stage
+                print*, 'In ', subroutine_name
+                print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
+                print *, 'which has key ',trim(reverseKey(SlotMethod))
+                stop 38756
+        end select
 
     end subroutine ll_slot_computation_ETM
 !%

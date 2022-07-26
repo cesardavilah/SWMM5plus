@@ -51,6 +51,9 @@ module runge_kutta2
         ! print *, 'AAA'
         ! call util_CLprint ()
 
+        !% --- update the preissmann numbers begining of an RK-step
+        ! call rk2_update_preissmann_number(ETM)
+
         istep=1
         call rk2_step_ETM (istep)
 
@@ -157,9 +160,6 @@ module runge_kutta2
 
         ! print *, 'QQQ'
         ! call util_CLprint ()
-
-        !% --- update preissmann number for the next time-step
-        call rk2_update_preissmann_number(ETM)
 
         !% --- accumulate the volume overflow
         elemR(:,er_VolumeOverFlowTotal) = elemR(:,er_VolumeOverFlowTotal) + elemR(:,er_VolumeOverFlow) 
@@ -739,12 +739,13 @@ module runge_kutta2
     subroutine rk2_update_preissmann_number (whichTM)
         !%-----------------------------------------------------------------------------
         !% Description:
-        !% Update the preissmann number at the end of an RK step
+        !%  Update the preissmann number at the end of an RK step for all elements
         !%-----------------------------------------------------------------------------
         integer, intent(in) :: whichTM
         integer, pointer    :: thisCol_CC, thisCol_JB, thisCol_Diag
         integer, pointer    :: Npack, thisP(:), SlotMethod, fUp(:), fDn(:)
-        real(8), pointer    :: PNumber(:), fPNumber(:), ellMax(:), ell(:), PreissmannAlpha, TargetPCelerity, grav
+        real(8), pointer    :: PNumber(:), fPNumber(:), ellMax(:), ell(:), AreaN0(:), Area(:)
+        real(8), pointer    :: PreissmannAlpha, TargetPCelerity, grav
         logical, pointer    :: isSlot(:), fSlot(:)
         character(64) :: subroutine_name = 'rk2_update_preissmann_number'
         !%-----------------------------------------------------------------------------
@@ -765,6 +766,8 @@ module runge_kutta2
             PNumber    => elemR(:,er_Preissmann_Number)
             ellMax     => elemR(:,er_ell_max)
             ell        => elemR(:,er_ell)
+            AreaN0     => elemR(:,er_Area_N0)
+            Area       => elemR(:,er_Area)
             isSlot     => elemYN(:,eYN_isSlot)
             !% pointers to elemI columns
             fSlot      => faceYN(:,fYN_isSlot)
@@ -777,25 +780,26 @@ module runge_kutta2
             SlotMethod      => setting%PreissmannSlot%PreissmannSlotMethod
             PreissmannAlpha => setting%PreissmannSlot%PreissmannAlpha
             TargetPCelerity => setting%PreissmannSlot%TargetPreissmannCelerity
+
             !% Colsed CC elements
             Npack => npack_elemP(thisCol_CC)
             if (Npack > 0) then
                 !% pointer packed element indexes
                 thisP => elemP(1:Npack,thisCol_CC)
+
                 select case (SlotMethod)
+                    !% for a static slot, the preissmann number will always be one.
                     case (StaticSlot)
                         PNumber(thisP) = oneR
-                        
                     case (DynamicSlot)
-
-                        where (fSlot(fUp(thisP)) .and. fSlot(fDn(thisP)))
-                            !% get a new decreased preissmann number for the next time step only for surcharched elements
+                        !% decrease the preissmann number if the 
+                        where (isSlot(thisP))
+                            !% get a new decreased preissmann number for the next time step for elements having a slot
                             PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
-                            ! PNumber(thisP) = max(PNumber(thisP) ** 1.0 - log(PNumber(thisP)), oneR)
                         elsewhere
+                            !% reset the preissmann number every 
                             PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
                         end where
-
                     case default
                         !% should not reach this stage
                         print*, 'In ', subroutine_name
@@ -849,6 +853,7 @@ module runge_kutta2
                         elsewhere
                             PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
                         end where
+
                     case default
                         !% should not reach this stage
                         print*, 'In ', subroutine_name

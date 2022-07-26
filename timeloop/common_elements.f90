@@ -32,25 +32,17 @@ module common_elements
         integer, intent(in) :: eIdx
         integer, pointer :: fUp, fDn
         real(8), pointer :: Flowrate, Area, Velocity, Vmax
-        real(8), pointer :: Pcelerity, Pnumber, fPnumber(:), TargetCPT
         !%-----------------------------------------------------------------------------
         if (crashYN) return
-        TargetCPT => setting%PreissmannSlot%TargetPreissmannCelerity
+
         Vmax      => setting%Limiter%Velocity%Maximum
         Velocity  => elemR(eIdx,er_Velocity)
         Flowrate  => elemR(eIdx,er_Flowrate)
         Area      => elemR(eIdx,er_Area)
-        Pnumber   => elemR(eIdx,er_Preissmann_Number)
-        Pcelerity => elemR(eIdx,er_Preissmann_Celerity)
-        fUp       => elemI(eIdx,ei_Mface_uL)
-        fDn       => elemI(eIdx,ei_Mface_dL)
-        fPnumber  => faceR(:,fr_Preissmann_Number)
 
         !%-----------------------------------------------------------------------------
 
         Velocity = Flowrate / Area
-        Pnumber   = max(onehalfR * (fPnumber(fUp) + fPnumber(fDn)), oneR) 
-        Pcelerity = TargetCPT / Pnumber
 
         !% Velocity limiter
         if (setting%Limiter%Velocity%UseLimitMaxYN) then
