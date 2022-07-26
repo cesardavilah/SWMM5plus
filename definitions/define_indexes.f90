@@ -346,6 +346,7 @@ module define_indexes
         enumerator :: er_AreaBelowBreadthMax        !% area below the max breadth in a conduit (static)
         enumerator :: er_BottomSlope                !% bottom slope of the element
         enumerator :: er_BreadthMax                 !% maximum breadth of conduit (static)
+        enumerator :: er_CFL
         enumerator :: er_Depth                      !% actual maximum depth of open-channel flow
         enumerator :: er_dHdA                       !% geometric change in elevation with area (used in AC only)
         enumerator :: er_ell                        !% the ell (lower case L) modified hydraulic depth

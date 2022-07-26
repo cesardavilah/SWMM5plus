@@ -470,7 +470,7 @@ module face
             endwhere
 
             faceR(idx_fBC,fr_Velocity_u) = faceR(idx_fBC,fr_Flowrate)/faceR(idx_fBC,fr_Area_u)
-            faceR(idx_fBC,fr_Velocity_d) = faceR(idx_fBC,fr_Velocity_d)/faceR(idx_fBC,fr_Area_d)  
+            faceR(idx_fBC,fr_Velocity_d) = faceR(idx_fBC,fr_Flowrate)/faceR(idx_fBC,fr_Area_d)  
 
             !%  limit high velocities
             if (setting%Limiter%Velocity%UseLimitMaxYN) then
@@ -554,10 +554,10 @@ module face
 
             call face_interp_interior_set &
                 (fFlowSet, eFlowSet, er_InterpWeight_dQ, er_InterpWeight_uQ, facePackCol, Npack)
-                
+
             call face_interp_interior_set &
                 (fPreissmenSet, ePreissmenSet, er_InterpWeight_dQ, er_InterpWeight_uQ, facePackCol, Npack)
-
+                
             !% copy upstream to downstream storage at a face
             !% (only for Head and Geometry types)
             !% note that these might be reset by hydraulic jump
@@ -572,8 +572,6 @@ module face
 
             !% reset all the hydraulic jump interior faces
             call jump_compute
-        ! else
-            
         end if
         !%------------------------------------------------------------------
         !% Closing
@@ -650,10 +648,15 @@ module face
         if (isTM) then
             call face_interp_shared_set &
                 (fGeoSetU, eGhostGeoSet, ebgr_InterpWeight_dG, ebgr_InterpWeight_uG, facePackCol, Npack)
+
             call face_interp_shared_set &
                 (fHeadSetU, eGhostHeadSet, ebgr_InterpWeight_dH, ebgr_InterpWeight_uH, facePackCol, Npack)
+
             call face_interp_shared_set &
                 (fFlowSet, eGhostFlowSet, ebgr_InterpWeight_dQ, ebgr_InterpWeight_uQ, facePackCol, Npack)
+
+            call face_interp_shared_set &
+                (fPreissmenSet, eGhostPreissmenSet, ebgr_InterpWeight_dQ, ebgr_InterpWeight_uQ, facePackCol, Npack)
 
             !% copy upstream to downstream storage at a face
             !% (only for Head and Geometry types)
@@ -667,9 +670,6 @@ module face
             call face_velocities (facePackCol, .false.)
             !% HACK needs jump computation for across shared faces
             ! print *, "HACK missing hydraulic jump that occurs on shared faces 36987"
-        else
-            call face_interp_shared_set &
-                (fPreissmenSet, eGhostPreissmenSet, ebgr_InterpWeight_dQ, ebgr_InterpWeight_uQ, facePackCol, Npack)
         end if
         !%-------------------------------------------------------------------
         !% closing   

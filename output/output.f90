@@ -471,6 +471,10 @@ contains
         if (setting%Output%DataOut%isWaveSpeedOut)               N_OutTypeElem =  N_OutTypeElem + 1
         if (setting%Output%DataOut%isPreissmannCelerityOut)      N_OutTypeElem =  N_OutTypeElem + 1
         if (setting%Output%DataOut%isPreissmannNumberOut)        N_OutTypeElem =  N_OutTypeElem + 1
+        if (setting%Output%DataOut%isInterpWeightQupOut)         N_OutTypeElem =  N_OutTypeElem + 1
+        if (setting%Output%DataOut%isInterpWeightQdnOut)         N_OutTypeElem =  N_OutTypeElem + 1
+        if (setting%Output%DataOut%isInterpWeightGupOut)         N_OutTypeElem =  N_OutTypeElem + 1
+        if (setting%Output%DataOut%isInterpWeightGdnOut)         N_OutTypeElem =  N_OutTypeElem + 1
 
         if (N_OutTypeElem == 0) then
             !% --- if no outputtypes are specified, then suppress the element output
@@ -636,8 +640,43 @@ contains
             output_typenames_elemR(ii) = 'SlotVolume'
             output_typeUnits_elemR(ii) = 'm^3'
             output_typeProcessing_elemR(ii) = AverageElements
-        end if       
+        end if 
 
+        ! --- Slot InterpWeightQup
+        if (setting%Output%DataOut%isInterpWeightQupOut)  then  
+        ii = ii+1
+            output_types_elemR(ii) = er_InterpWeight_uQ
+            output_typenames_elemR(ii) = 'InterpWeightQup'
+            output_typeUnits_elemR(ii) = 's'
+            output_typeProcessing_elemR(ii) = AverageElements
+        end if 
+
+        ! --- Slot InterpWeightQdn
+        if (setting%Output%DataOut%isInterpWeightQdnOut)  then  
+        ii = ii+1
+            output_types_elemR(ii) = er_InterpWeight_dQ
+            output_typenames_elemR(ii) = 'InterpWeightQdn'
+            output_typeUnits_elemR(ii) = 's'
+            output_typeProcessing_elemR(ii) = AverageElements
+        end if 
+
+        ! --- Slot InterpWeightGup
+        if (setting%Output%DataOut%isInterpWeightGupOut)  then  
+        ii = ii+1
+            output_types_elemR(ii) = er_InterpWeight_uG
+            output_typenames_elemR(ii) = 'InterpWeightGup'
+            output_typeUnits_elemR(ii) = 's'
+            output_typeProcessing_elemR(ii) = AverageElements
+        end if 
+
+        ! --- Slot InterpWeightGdn
+        if (setting%Output%DataOut%isInterpWeightGdnOut)  then  
+        ii = ii+1
+            output_types_elemR(ii) = er_InterpWeight_dG
+            output_typenames_elemR(ii) = 'InterpWeightGdn'
+            output_typeUnits_elemR(ii) = 's'
+            output_typeProcessing_elemR(ii) = AverageElements
+        end if      
         
         !% -- store 'time' for use in output
         output_typeNames_withTime_elemR(2:ii+1) = output_typeNames_elemR(:)

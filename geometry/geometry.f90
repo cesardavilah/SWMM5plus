@@ -1606,7 +1606,7 @@ subroutine geo_head_from_ell (thisColP)
                         if (head(tB) .gt. zcrown(tB) .or. fSlot(fUp(tB))) then
                             isSlot(tB)     = .true.
                             fSlot(fUp(tB)) = .true.
-                            PCelerity(tB)  = TargetPCelerity / PNumber(tB)
+                            PCelerity(tB)  = min(TargetPCelerity / PNumber(tB), TargetPCelerity)
                             SlotDepth(tB)  = max(depth(tB) - fulldepth(tB), zeroR)   
                             SlotArea(tB)   = (SlotDepth(tB) * (PNumber(tB)**twoR) * grav * &
                                                 fullArea(tB)) / (TargetPCelerity ** twoR)
@@ -1617,7 +1617,7 @@ subroutine geo_head_from_ell (thisColP)
                             area(tB)   = area(tB)    + SlotArea(tB)
                             depth(tB)  = depth(tB)   + SlotDepth(tB)
                             Overflow(tB) = zeroR
-                        end if
+                        end if  
                     end if
                 end do
                 !% handle the downstream branches
@@ -1637,7 +1637,7 @@ subroutine geo_head_from_ell (thisColP)
                         if (head(tB) .gt. zcrown(tB) .or. fSlot(fDn(tB))) then
                             isSlot(tB)     = .true.
                             fSlot(fDn(tB)) = .true.
-                            PCelerity(tB)  = TargetPCelerity / PNumber(tB)
+                            PCelerity(tB)  = min(TargetPCelerity / PNumber(tB), TargetPCelerity)
                             SlotDepth(tB)  = max(depth(tB) - fulldepth(tB), zeroR)    
                             SlotArea(tB)   = (SlotDepth(tB) * (PNumber(tB)**twoR) * grav * &
                                                 fullArea(tB)) / (TargetPCelerity ** twoR)

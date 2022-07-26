@@ -7,7 +7,7 @@
     },
     "Discretization" : {
         "AdjustLinkLengthYN" : false,
-        "ElemShortingFactor" : 1.00,
+        "ElemShortingFactor" : 0.33,
         "MinElemLengthFactor" : 0.5,
         "MinElemLengthMethod" : "ElemLengthAdjust",
         "NominalElemLength" : 0.072
@@ -97,7 +97,7 @@
     },
     "PreissmannSlot" : {
         "PreissmannSlotMethod" : "DynamicSlot",
-        "TargetPreissmannCelerity" : 25.00,
+        "TargetPreissmannCelerity" : 100.00,
         "PreissmannAlpha" : 2.0
     },
     "VariableDT" : {
@@ -129,7 +129,7 @@
     "Solver" : {
         "PreissmannSlot" : true,
         "SubtractReferenceHead" : false,
-        "MomentumSourceMethod" : "T10",
+        "MomentumSourceMethod" : "T00",
         "SolverSelect" : "ETM",
         "SwitchFractionDn" : 0.8,
         "SwitchFractionUp" : 0.9,

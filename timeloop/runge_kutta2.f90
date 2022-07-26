@@ -744,7 +744,7 @@ module runge_kutta2
         integer, intent(in) :: whichTM
         integer, pointer    :: thisCol_CC, thisCol_JB, thisCol_Diag
         integer, pointer    :: Npack, thisP(:), SlotMethod, fUp(:), fDn(:)
-        real(8), pointer    :: PNumber(:), fPNumber(:), ellMax(:), PreissmannAlpha, TargetPCelerity, grav
+        real(8), pointer    :: PNumber(:), fPNumber(:), ellMax(:), ell(:), PreissmannAlpha, TargetPCelerity, grav
         logical, pointer    :: isSlot(:), fSlot(:)
         character(64) :: subroutine_name = 'rk2_update_preissmann_number'
         !%-----------------------------------------------------------------------------
@@ -764,6 +764,7 @@ module runge_kutta2
         !% pointers to elemR columns
             PNumber    => elemR(:,er_Preissmann_Number)
             ellMax     => elemR(:,er_ell_max)
+            ell        => elemR(:,er_ell)
             isSlot     => elemYN(:,eYN_isSlot)
             !% pointers to elemI columns
             fSlot      => faceYN(:,fYN_isSlot)
@@ -784,9 +785,10 @@ module runge_kutta2
                 select case (SlotMethod)
                     case (StaticSlot)
                         PNumber(thisP) = oneR
+                        
                     case (DynamicSlot)
 
-                        where (isSlot(thisP))
+                        where (fSlot(fUp(thisP)) .and. fSlot(fDn(thisP)))
                             !% get a new decreased preissmann number for the next time step only for surcharched elements
                             PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
                             ! PNumber(thisP) = max(PNumber(thisP) ** 1.0 - log(PNumber(thisP)), oneR)
@@ -794,9 +796,6 @@ module runge_kutta2
                             PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
                         end where
 
-                        ! % update the preissmann number from using simple face interpolation
-                        PNumber(thisP) = max(onehalfR * (fPNumber(fUp(thisP)) + fPNumber(fDn(thisP))), oneR)
-                         
                     case default
                         !% should not reach this stage
                         print*, 'In ', subroutine_name
@@ -819,7 +818,7 @@ module runge_kutta2
                         !% get a new decreased preissmann number for the next time step only for surcharched elements
                         where (isSlot(thisP))
                             !% get a new decreased preissmann number for the next time step only for surcharched elements
-                            PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
+                            PNumber(thisP) = max((PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP), oneR)
                         elsewhere
                             PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
                         end where
@@ -846,7 +845,7 @@ module runge_kutta2
                         !% if an element upstream or downstream has a slot
                         where ((fSlot(fUp(thisP))) .or. (fSlot(fDn(thisP))))
                             !% get a new decreased preissmann number for the next time step only for surcharched elements
-                            PNumber(thisP) = (PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP)
+                            PNumber(thisP) = max((PNumber(thisP) ** twoR - PNumber(thisP) + oneR)/PNumber(thisP), oneR)
                         elsewhere
                             PNumber(thisP) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(thisP)))
                         end where

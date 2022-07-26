@@ -235,7 +235,7 @@ contains
             print*, faceR(:,fr_Topwidth_d), 'face topwidth dn'
             ! call execute_command_line('')
         end if
-        
+        ! stop 779
         if (setting%Debug%File%initial_condition) &
             write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"
 
@@ -844,7 +844,11 @@ contains
                 elemR(:,er_Volume)                = elemR(:,er_Area) * elemR(:,er_Length)
                 elemR(:,er_Volume_N0)             = elemR(:,er_Volume)
                 elemR(:,er_Volume_N1)             = elemR(:,er_Volume)
-            endwhere
+
+                ! where (elemI(:,ei_link_Gidx_BIPquick) == 6)
+                !     elemR(:,er_Zbottom) = -0.4
+                ! end where
+            end where
             
         case (lCircular)
 
@@ -1165,7 +1169,12 @@ contains
                 elemR(:,er_FullDepth)               = elemSR(:,esr_Orifice_Zcrown) - elemR(:,er_Zbottom)
 
             end where
-
+            ! print*, '..............................................................................'
+            ! print*, elemSR(163:164,esr_Orifice_FullDepth), 'esr_Orifice_FullDepth'
+            ! print*, elemSR(163:164,esr_Orifice_DischargeCoeff), 'esr_Orifice_DischargeCoeff'
+            ! print*, elemSR(163:164,esr_Orifice_Orate)  , 'esr_Orifice_Orate  '
+            ! print*, elemSR(163:164,esr_Orifice_Zcrest), 'esr_Orifice_Zcrest'
+            ! print*, elemSR(163:164,esr_Orifice_Zcrown) , 'esr_Orifice_Zcrown '
         case default
             print *, 'In ', subroutine_name
             print *, 'CODE ERROR: unknown orifice geometry type, ', OrificeGeometryType,'  in network'
@@ -1177,12 +1186,12 @@ contains
 
         !% --- set minimum crest height as 101% of the zero depth value for all orifices
         !%     this ensures that zero-height orifice elements cannot cause flow for zerovalue depths
-        thisPack = pack(elemI(:,ei_Lidx),(elemI(:,ei_link_Gidx_BIPquick) == thisLink) ) 
-        do ii=1,size(thisPack)
-            elemSR(thisPack(ii),esr_Orifice_Zcrest) = &
-                max( elemSR(thisPack(ii),esr_Orifice_Zcrest), elemR(thisPack(ii),er_Zbottom) + setting%ZeroValue%Depth*1.d1  )
-        end do
-        deallocate(thisPack)
+        ! thisPack = pack(elemI(:,ei_Lidx),(elemI(:,ei_link_Gidx_BIPquick) == thisLink) ) 
+        ! do ii=1,size(thisPack)
+        !     elemSR(thisPack(ii),esr_Orifice_Zcrest) = &
+        !         max( elemSR(thisPack(ii),esr_Orifice_Zcrest), elemR(thisPack(ii),er_Zbottom) + setting%ZeroValue%Depth*1.d1  )
+        ! end do
+        ! deallocate(thisPack)
 
         !% --- initialize a default rectangular channel as the background of the weir
         call init_IC_diagnostic_default_geometry (thisLink)
@@ -1407,7 +1416,7 @@ contains
             thisCol(5) = er_FullArea
             thisCol(6) = er_FullVolume
             thisCol(7) = er_AreaBelowBreadthMax
-            thisCol(8) = er_ell_max !HACK using er_Temp01 instead of er_ell_max for testing
+            thisCol(8) = er_ell_max 
             thisCol(9) = er_FullHydDepth
             thisCol(10)= er_FullPerimeter
             thisCol(11)= er_Area
@@ -2114,6 +2123,8 @@ contains
             elemR(:,er_InterpWeight_dG) = setting%Limiter%InterpWeight%Maximum
             elemR(:,er_InterpWeight_uH) = setting%Limiter%InterpWeight%Maximum
             elemR(:,er_InterpWeight_dH) = setting%Limiter%InterpWeight%Maximum
+            elemR(:,er_InterpWeight_uP) = setting%Limiter%InterpWeight%Maximum
+            elemR(:,er_InterpWeight_dP) = setting%Limiter%InterpWeight%Maximum
         endwhere
 
         !% H-diagnostic elements will have minimum interp weights for H and G
@@ -2127,6 +2138,8 @@ contains
             elemR(:,er_InterpWeight_dG) = setting%Limiter%InterpWeight%Minimum
             elemR(:,er_InterpWeight_uH) = setting%Limiter%InterpWeight%Minimum
             elemR(:,er_InterpWeight_dH) = setting%Limiter%InterpWeight%Minimum
+            elemR(:,er_InterpWeight_uP) = setting%Limiter%InterpWeight%Maximum
+            elemR(:,er_InterpWeight_dP) = setting%Limiter%InterpWeight%Maximum
         endwhere
 
         ! !% brh 20220204 -- ccommenting this approach
@@ -2385,14 +2398,14 @@ contains
         elemR(1:size(elemR,1)-1,er_SlotArea)              = zeroR
         elemR(1:size(elemR,1)-1,er_SlotWidth)             = zeroR
         elemR(1:size(elemR,1)-1,er_Preissmann_Celerity)   = zeroR
-        !% HACK: set a preissmann number based on CpT and alpha regardless of the slot type
-        elemR(1:size(elemR,1)-1,er_Preissmann_Number)     = TargetPCelerity / (PreissmannAlpha * sqrt(grav * elemR(1:size(elemR,1)-1,er_FullDepth)))
-
+        
         !% only calculate slots for ETM time-march
         if (setting%Solver%SolverSelect == ETM) then
             select case (SlotMethod)
 
             case (StaticSlot)
+
+                elemR(1:size(elemR,1)-1,er_Preissmann_Number) = oneR
 
                 where (elemYN(:,eYN_isSlot))
                     elemR(:,er_Preissmann_Number)   = oneR
@@ -2403,6 +2416,8 @@ contains
                 end where
 
             case (DynamicSlot)
+
+                elemR(1:size(elemR,1)-1,er_Preissmann_Number) = TargetPCelerity / (PreissmannAlpha * sqrt(grav * elemR(1:size(elemR,1)-1,er_ell_max)))
 
                 where (elemYN(:,eYN_isSlot))
                     elemR(:,er_Preissmann_Number)   = TargetPCelerity / (PreissmannAlpha * sqrt(grav * elemR(:,er_ell_max)))

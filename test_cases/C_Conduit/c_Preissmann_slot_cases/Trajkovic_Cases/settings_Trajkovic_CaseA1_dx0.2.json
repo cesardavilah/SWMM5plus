@@ -60,13 +60,17 @@
             "isVolumeOut"               : true,
             "isWaveSpeedOut"            : true,
             "isPreissmannCelerityOut"   : true,
-            "isPreissmannNumberOut"     : true
+            "isPreissmannNumberOut"     : true,
+            "isInterpWeightQupOut"      : true,
+            "isInterpWeightQdnOut"      : true,
+            "isInterpWeightGupOut"      : true,
+            "isInterpWeightGdnOut"      : true
         },
         "Report" : {
             "useSWMMinpYN" :false,
             "provideYN" : true,
             "suppress_MultiLevel_Output" : false,
-            "StartTime" : 115.0,
+            "StartTime" : 0.0,
             "TimeInterval" : 0.1,
             "TimeUnits" : "Seconds"
         }
@@ -151,7 +155,7 @@
     "Solver" : {
         "PreissmannSlot" : true,
         "SubtractReferenceHead" : false,
-        "MomentumSourceMethod" : "T10",
+        "MomentumSourceMethod" : "T00",
         "SolverSelect" : "ETM",
         "SwitchFractionDn" : 0.8,
         "SwitchFractionUp" : 0.9,

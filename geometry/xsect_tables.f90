@@ -197,8 +197,8 @@ contains
 
         !% find the normalized output from the lookup table
         if (position .LE. zeroI) then
-            normalizedOutput = zeroR
-
+            normalizedOutput = zeroR 
+        
         else if ( (position .GT. zeroI          ) .and. &
                   (position .LT. (nItems - oneI)) ) then
 

@@ -5,7 +5,7 @@ module lowlevel_rk2
     use define_indexes
     use define_keys
     use face
-    use utility, only: util_sign_with_ones
+    use utility
     use utility_output
 
     implicit none
@@ -1262,7 +1262,7 @@ module lowlevel_rk2
         integer, pointer    :: thisP(:), SlotMethod, fUp(:), fDn(:)
         real(8), pointer    :: AreaN0(:), BreadthMax(:), ellMax(:), fullarea(:)
         real(8), pointer    :: fullVolume(:), length(:), PNumber(:), PCelerity(:), SlotHydRad(:) 
-        real(8), pointer    :: SlotWidth(:), SlotVolume(:), SlotDepth(:), SlotArea(:), volume(:)  
+        real(8), pointer    :: SlotWidth(:), SlotVolume(:), SlotDepth(:), SlotArea(:), volume(:), Vvalue(:) 
         real(8), pointer    :: velocity(:), fPNumber(:), TargetPCelerity, cfl, grav, PreissmannAlpha
         logical, pointer    :: isSlot(:), fSlot(:)
 
@@ -1301,6 +1301,8 @@ module lowlevel_rk2
         cfl                 => setting%VariableDT%CFL_target
         grav                => setting%Constant%gravity
 
+        Vvalue     => elemR(:,er_Temp01)
+
         !% initialize slot
         SlotVolume(thisP) = zeroR
         SlotArea(thisP)   = zeroR
@@ -1311,21 +1313,24 @@ module lowlevel_rk2
         fSlot(fUp(thisP)) = .false.
         fSlot(fDn(thisP)) = .false.
 
+        !% smooth the preissmann number from using simple face interpolation
+        PNumber(thisP) = max(onehalfR * (fPNumber(fUp(thisP)) + fPNumber(fDn(thisP))), oneR)
+        
         !% find out the slot volume/ area/ and the faces that are surcharged
         where (volume(thisP) > fullVolume(thisP))
             SlotVolume(thisP) = volume(thisP) - fullvolume(thisP)
             SlotArea(thisP)   = SlotVolume(thisP) / length(thisP)
             fSlot(fUp(thisP)) = .true.
             fSlot(fDn(thisP)) = .true.
+            isSlot(thisP)     = .true.
             !% find the water height at the slot
             SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
         end where
 
-        !% Any cell containing a face slot will get a slot and have a preissmann celerity
-        where (fSlot(fUp(thisP)) .and. fSlot(fDn(thisP)))
-            isSlot(thisP)     = .true.
+        !% Preissmann Celerity will be calculated any CC element containing a face slot
+        where (fSlot(fUp(thisP)) .or. fSlot(fDn(thisP)))
             !% Preissmann Celerity
-            PCelerity(thisP) = TargetPCelerity / PNumber(thisP)
+            PCelerity(thisP) = min(TargetPCelerity / PNumber(thisP), TargetPCelerity)
         end where
 
     end subroutine ll_slot_computation_ETM

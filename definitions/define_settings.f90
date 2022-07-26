@@ -152,6 +152,10 @@ module define_settings
         logical :: isWaveSpeedOut           = .false.
         logical :: isPreissmannCelerityOut  = .false.
         logical :: isPreissmannNumberOut    = .false.
+        logical :: isInterpWeightQupOut     = .false.
+        logical :: isInterpWeightQdnOut     = .false.
+        logical :: isInterpWeightGupOut     = .false.
+        logical :: isInterpWeightGdnOut     = .false.
     end type DataOutType
 
     !% setting%Limiter%ArraySize
@@ -1447,6 +1451,26 @@ contains
         call json%get('Output.DataOut.isPreissmannNumberOut', logical_value, found)
         if (found) setting%Output%DataOut%isPreissmannNumberOut = logical_value
         if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Output.DataOut.isPreissmannNumberOut not found'
+
+        !%                       Dataout.isInterpWeightQupOut
+        call json%get('Output.DataOut.isInterpWeightQupOut', logical_value, found)
+        if (found) setting%Output%DataOut%isInterpWeightQupOut = logical_value
+        if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Output.DataOut.isInterpWeightQupOut not found'
+
+        !%                       Dataout.isInterpWeightQdnOut
+        call json%get('Output.DataOut.isInterpWeightQdnOut', logical_value, found)
+        if (found) setting%Output%DataOut%isInterpWeightQdnOut = logical_value
+        if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Output.DataOut.isInterpWeightQdnOut not found'
+
+        !%                       Dataout.isInterpWeightGupOut
+        call json%get('Output.DataOut.isInterpWeightGupOut', logical_value, found)
+        if (found) setting%Output%DataOut%isInterpWeightGupOut = logical_value
+        if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Output.DataOut.isInterpWeightGupOut not found'
+
+        !%                       Dataout.isInterpWeightGdnOut
+        call json%get('Output.DataOut.isInterpWeightGdnOut', logical_value, found)
+        if (found) setting%Output%DataOut%isInterpWeightGdnOut = logical_value
+        if ((.not. found) .and. (jsoncheck)) stop "Error - json file - setting " // 'Output.DataOut.isInterpWeightGdnOut not found'
              
         !% --- Report settings
         !%                       Report.useSWMMinpYN

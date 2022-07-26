@@ -293,16 +293,6 @@ module update
                 thisP2 => elemP(1:Npack2,thisCol_AC)
                 wavespeed(thisP2) = wavespeed(thisP2) * setting%ACmethod%Celerity%RC
             end if
-        ! else if (whichTM .eq. ETM) then
-        !     Npack2 => npack_elemP(thisCol_ClosedElems)
-        !     if (Npack2 > 0) then
-        !         thisP2 => elemP(1:Npack2,thisCol_ClosedElems)
-        !         !% initialize preissmann slot celerity
-        !         PCelerity(thisP2) = zeroR
-        !         where (isSlot(thisP)) 
-        !             PCelerity(thisP2) = sqrt(grav * (fullArea(thisP2))/SlotWidth(thisP2))
-        !         end where
-        !     end if
         end if
 
         ! where (.not. isSlot(thisP))
@@ -351,6 +341,8 @@ module update
         !% but may be modified elsewhere
         w_uG(thisP) = w_uQ(thisP)
         w_dG(thisP) = w_dQ(thisP)
+        w_uP(thisP) = w_uQ(thisP)
+        w_dP(thisP) = w_dQ(thisP)
 
         !% head uses length scale interpolation
         !% This shouldn't need limiters.
@@ -387,7 +379,7 @@ module update
             integer, pointer    :: npack, thisP(:)
             integer             :: ii
             real(8), pointer    :: grav, wavespeed(:), PCelerity(:), velocity(:), length(:), depth(:)
-            real(8), pointer    :: w_uQ(:), w_dQ(:), w_uG(:), w_dG(:), w_uH(:), w_dH(:)
+            real(8), pointer    :: w_uQ(:), w_dQ(:), w_uG(:), w_dG(:), w_uH(:), w_dH(:), w_uP(:), w_dP(:)
             logical, pointer    :: isSlot(:)
         !%------------------------------------------------------------------
         !% Aliases
@@ -406,6 +398,8 @@ module update
             w_dG      => elemR(:,er_InterpWeight_dG)
             w_uH      => elemR(:,er_InterpWeight_uH)
             w_dH      => elemR(:,er_InterpWeight_dH)
+            w_uP      => elemR(:,er_InterpWeight_uP)
+            w_dP      => elemR(:,er_InterpWeight_dP)
             isSlot    => elemYN(:,eYN_isSlot)
         !%------------------------------------------------------------------
         !% cycle through the branches to compute weights
@@ -455,6 +449,8 @@ module update
             !% set the geometry interp the same as flow interp
             w_uG(thisP+ii) = w_uQ(thisP+ii)
             w_dG(thisP+ii) = w_dQ(thisP+ii)
+            w_uP(thisP+ii) = w_uQ(thisP+ii)
+            w_dP(thisP+ii) = w_dQ(thisP+ii)
 
             !% use head interp as length-scaled
             w_uH(thisP+ii) = onehalfR * length(thisP+ii)
