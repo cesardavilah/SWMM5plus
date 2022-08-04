@@ -144,11 +144,12 @@ contains
         !% this finds the position in the table for interpolation
         position(thisP) = int(normalizedInput(thisP) / delta)
 
+
         !% find the normalized output from the lookup table
-        where (position(thisP) .LE. zeroI)
+        where (position(thisP) .LT. zeroI)
             inoutArray(thisP) = zeroR
 
-        elsewhere ( (position(thisP) .GT. zeroI          ) .and. &
+        elsewhere ( (position(thisP) .GE. zeroI          ) .and. &
                     (position(thisP) .LT. (nItems - oneI)) )
 
             !%  Y = Y_a + (Y_b-Y_a)*(X_0-X_a)/(X_b-X_a)
@@ -163,9 +164,12 @@ contains
         !% quadratic interpolation for low value of normalizedInput
         where (position(thisP) .LT. twoI)
             inoutArray(thisP) = max(zeroR, &
-                    (inoutArray(thisP) + (inoutArray(thisP) - delta) * &
-                    (inoutArray(thisP) - twoI * delta) / (delta*delta) *         &
-                    (table(oneI)/twoR - table(twoI)  +  table(threeI) / twoR)) )
+                    inoutArray(thisP)                                                                   &
+                    + (normalizedInput(thisP) - (position(thisP)     ) * delta)                         &
+                    * (normalizedInput(thisP) - (position(thisP)+oneI) * delta)                         &
+                    / (delta*delta)                                                                     &
+                    * (table(position(thisP)+oneI)/twoR - table(position(thisP)+twoI)                   &
+                    +  table(position(thisP)+threeI)/twoR) )
         endwhere
 
         !% reset the temporary values to nullvalue

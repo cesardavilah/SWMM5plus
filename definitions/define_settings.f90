@@ -368,7 +368,7 @@ module define_settings
 
     ! setting%Constant
     type ConstantType
-        real(8) :: gravity = 9.81 ! m^2/s
+        real(8) :: gravity = 9.81d0  ! m^2/s
         real(8) :: energy_correction_factor = 1.0 
     end type ConstantType
 
@@ -619,10 +619,10 @@ module define_settings
     !% Note that Depth is the setting users should change
     type ZerovalueType
         logical :: UseZeroValues = .true.
-        real(8) :: Area = 1.0e-3 ! m^2 -- set by code
-        real(8) :: Depth = 1.0e-3 ! m
-        real(8) :: Topwidth = 1.0 ! m -- set by code
-        real(8) :: Volume = 1.0e-2 ! m^3 -- set by code
+        real(8) :: Area = 1.d-3 ! m^2 -- set by code
+        real(8) :: Depth = 1.d-3 ! m
+        real(8) :: Topwidth = 1.d0 ! m -- set by code
+        real(8) :: Volume = 1.d-2 ! m^3 -- set by code
         real(8) :: VolumeResetLevel !m^3 -- set by code
     end type ZerovalueType
 

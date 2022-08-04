@@ -890,7 +890,7 @@ contains
                 !print *, '======================================'
 
                 !% real data
-                elemR(ElemLocalCounter,er_Length)           = link%R(thisLink,lr_AdjustedLength)/link%I(thisLink,li_N_element)
+                elemR(ElemLocalCounter,er_Length)           = link%R(thisLink,lr_ElementLength)
                 elemR(ElemLocalCounter,er_Zbottom)          = zCenter
 
                 !%................................................................

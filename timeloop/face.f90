@@ -504,7 +504,7 @@ module face
             integer, intent(in) :: facePackCol  !% Column in faceP array for needed pack
             integer, intent(in) :: Npack        !% expected number of packed rows in faceP.
             logical, intent(in) :: isTM
-            integer :: fGeoSetU(3), fGeoSetD(3), eGeoSet(3)
+            integer :: fGeoSetU(4), fGeoSetD(4), eGeoSet(4)
             integer :: fHeadSetU(1), fHeadSetD(1), eHeadSet(1)
             integer :: fFlowSet(1), eFlowSet(1)
             integer :: fPreissmenSet(1), ePreissmenSet(1)
@@ -530,9 +530,9 @@ module face
         !% set the matching sets
         !% THESE SHOULD BE DONE IN A GLOBAL -- MAYBE SETTINGS
         !% Note these can be expanded for other terms to be interpolated.
-        fGeoSetU = [fr_Area_u, fr_Topwidth_u, fr_HydDepth_u]
-        fGeoSetD = [fr_Area_d, fr_Topwidth_d, fr_HydDepth_d]
-        eGeoSet  = [er_Area,   er_Topwidth,   er_HydDepth]
+        fGeoSetU = [fr_Area_u, fr_Topwidth_u, fr_HydDepth_u, fr_SlotVolume_u]
+        fGeoSetD = [fr_Area_d, fr_Topwidth_d, fr_HydDepth_d, fr_SlotVolume_d]
+        eGeoSet  = [er_Area,   er_Topwidth,   er_HydDepth, er_SlotVolume]
 
         fHeadSetU = [fr_Head_u]
         fHeadSetD = [fr_Head_d]

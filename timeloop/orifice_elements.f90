@@ -242,9 +242,14 @@ module orifice_elements
         select case (GeometryType)
             case (circular)
                 YoverYfull        = EffectiveFullDepth / FullDepth
-                interp = xsect_table_lookup_singular (YoverYfull, ACirc, NACirc)
-                EffectiveFullArea = FullArea * xsect_table_lookup_singular (YoverYfull, ACirc, NACirc)
-                AoverL            = onefourthR * EffectiveFullDepth
+                if (YoverYfull .le. zeroR) then
+                    EffectiveFullArea =  zeroR
+                    AoverL = zeroR
+                else
+                    interp = xsect_table_lookup_singular (YoverYfull, ACirc, NACirc)
+                    EffectiveFullArea = FullArea * xsect_table_lookup_singular (YoverYfull, ACirc, NACirc)
+                    AoverL            = onefourthR * EffectiveFullDepth
+                end if
             case (rectangular_closed)
                 EffectiveFullArea = EffectiveFullDepth * RectangularBreadth
                 AoverL            = EffectiveFullArea / (twoR * (EffectiveFullDepth + RectangularBreadth))
@@ -258,6 +263,7 @@ module orifice_elements
         ! write(*,"(a22,f9.3)")'YoverYfull         = ',YoverYfull
         ! write(*,"(a22,f9.3)")'interp             = ',interp
         ! write(*,"(a22,f9.3)")'EffectiveFullArea  = ',EffectiveHeadDelta
+
         !% find critical depth to determine weir/orifice flow
         select case (SpecificOrificeType)
         case (bottom_orifice)
@@ -387,13 +393,13 @@ module orifice_elements
         end select
 
         !% apply geometry limiters
-        ! call adjust_limit_by_zerovalues_singular (eIdx, er_Area,      setting%ZeroValue%Area)
-        ! call adjust_limit_by_zerovalues_singular (eIdx, er_Depth,     setting%ZeroValue%Depth)
-        ! call adjust_limit_by_zerovalues_singular (eIdx, er_HydDepth,  setting%ZeroValue%Depth)
-        ! call adjust_limit_by_zerovalues_singular (eIdx, er_HydRadius, setting%ZeroValue%Depth)
-        ! call adjust_limit_by_zerovalues_singular (eIdx, er_Topwidth,  setting%ZeroValue%Topwidth)
-        ! call adjust_limit_by_zerovalues_singular (eIdx, er_Perimeter, setting%ZeroValue%Topwidth)
-        ! call adjust_limit_by_zerovalues_singular (eIdx, er_Volume,    setting%ZeroValue%Volume)
+        call adjust_limit_by_zerovalues_singular (eIdx, er_Area,      setting%ZeroValue%Area)
+        call adjust_limit_by_zerovalues_singular (eIdx, er_Depth,     setting%ZeroValue%Depth)
+        call adjust_limit_by_zerovalues_singular (eIdx, er_HydDepth,  setting%ZeroValue%Depth)
+        call adjust_limit_by_zerovalues_singular (eIdx, er_HydRadius, setting%ZeroValue%Depth)
+        call adjust_limit_by_zerovalues_singular (eIdx, er_Topwidth,  setting%ZeroValue%Topwidth)
+        call adjust_limit_by_zerovalues_singular (eIdx, er_Perimeter, setting%ZeroValue%Topwidth)
+        call adjust_limit_by_zerovalues_singular (eIdx, er_Volume,    setting%ZeroValue%Volume)
 
         if (setting%Debug%File%orifice_elements) &
             write(*,"(A,i5,A)") '*** leave ' // trim(subroutine_name) // " [Processor ", this_image(), "]"

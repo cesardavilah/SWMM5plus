@@ -267,7 +267,13 @@ contains
                 end if
             case (JB)
                 !% --- no output on junction branches
-                isElemOut(ii) = .false.
+                tnode => node_idx(ii)
+                !% --- junction mains correspond to nodes
+                if (isNodeOut(tnode)) then
+                    isElemOut(ii) = .true.
+                else
+                    isElemOut(ii) = .false.
+                end if
             case default
                 write (*,"(A)") 'CODE ERROR: statement should be unreachable'
                 write (*,"(A)") ' invalid element type was ',elementType(ii)
@@ -2675,7 +2681,7 @@ contains
                             mminc = mm+1 !% increment to skip time level
                             !% --- create the filename
                             fn_nodeFaceFV_csv = trim(setting%File%outputML_Node_kernel) &
-                                // 'FV_face_' //trim(tnodename) //'_'//trim(output_typeNames_faceR(mm)) //'.csv'
+                                // '_face_' //trim(tnodename) //'_'//trim(output_typeNames_faceR(mm)) //'.csv'
 
                             if (ii==1) then
                                 !% --- open a new file for this type and set the header

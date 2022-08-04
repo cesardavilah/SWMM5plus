@@ -1014,7 +1014,7 @@ module adjust
             real(8), pointer :: coef, multiplier, smallDepth
             real(8), pointer :: elemCrown(:), Vvalue(:), elemEllMax(:), Zbottom(:)
             real(8), pointer :: faceHeadUp(:), faceHeadDn(:), elemHead(:), elemVel(:)
-            real(8), pointer :: w_uH(:), w_dH(:)
+            real(8), pointer :: elemSlotDepth(:), faceSlotDepthUp(:), faceSlotDepthDn(:)
             logical, pointer :: fSlot(:)
             character(64) :: subroutine_name = 'adjust_Vshaped_head_surcharged'
         !%-------------------------------------------------------------------
@@ -1056,11 +1056,13 @@ module adjust
             elemHead   => elemR(:,er_Head)    
             elemCrown  => elemR(:,er_Zcrown)
             elemEllMax => elemR(:,er_ell_max)
-            w_uH       => elemR(:,er_InterpWeight_uH)
-            w_dH       => elemR(:,er_InterpWeight_dH)
             Vvalue     => elemR(:,er_Temp01)
             Zbottom    => elemR(:,er_Zbottom)
             fSlot      => faceYN(:,fYN_isSlot)
+
+            elemSlotDepth => elemR(:,er_SlotDepth)
+            faceSlotDepthUp => faceR(:,fr_SlotVolume_d)
+            faceSlotDepthDn => faceR(:,fr_SlotVolume_d)
 
             multiplier => setting%Adjust%Head%FullDepthMultiplier
 

@@ -2,8 +2,8 @@
     "JSON_FoundFileYN" : true,
     "JSON_CheckAllInputYN" : false,
     "CaseName" : {
-        "Long"  : "VasconcelosTPA",
-        "Short" : "TPA"
+        "Long"  : "TwoStorage",
+        "Short" : "TwoStorage"
     },
     "Discretization" : {
         "AdjustLinkLengthYN" : false,
@@ -54,6 +54,7 @@
             "isHeadOut"                 : true,
             "isHydRadiusOut"            : false,
             "isPerimeterOut"            : false,
+            "isRoughnessDynamicOut" : false,
             "isSlotWidthOut"            : true,
             "isSlotDepthOut"            : true,
             "isTopWidthOut"             : false,
@@ -66,9 +67,10 @@
         "Report" : {
             "useSWMMinpYN" :false,
             "provideYN" : true,
+            "useHD5F"   : false,
             "suppress_MultiLevel_Output" : false,
             "StartTime" : 0.0,
-            "TimeInterval" : 0.01,
+            "TimeInterval" : 0.1,
             "TimeUnits" : "Seconds"
         }
     },
@@ -76,8 +78,12 @@
         "useYN" : false
     },
     "Simulation" : {
-        "useHydrology" : false,
-        "useHydraulics" : true
+        "stopAfterInitializationYN" : false,
+        "useHydrology"              : true,
+        "useHydraulics"             : true,
+        "useSpinUp"                 : false,
+        "stopAfterSpinUp"           : false,
+        "SpinUpDays"                : 10.0
     },
 
     "TestCase" : {
@@ -97,14 +103,14 @@
     },
     "PreissmannSlot" : {
         "PreissmannSlotMethod" : "StaticSlot",
-        "TargetPreissmannCelerity" : 30.00,
+        "TargetPreissmannCelerity" : 10.00,
         "PreissmannAlpha" : 2.0
     },
     "VariableDT" : {
         "ApplyYN" : true,
-        "CFL_hi_max" : 0.2,
-        "CFL_target" : 0.1,
-        "CFL_lo_max" : 0.05,
+        "CFL_hi_max" : 0.4,
+        "CFL_target" : 0.3,
+        "CFL_lo_max" : 0.2,
         "increaseFactor" : 1.2,
         "NstepsForCheck" : 10
     },
@@ -120,7 +126,7 @@
             "SmallDepthMultiplier" : 1.0
         },
         "Head" : {
-            "ApplyYN" : true,
+            "ApplyYN" : false,
             "Approach" : "vshape_surcharge_only",
             "Coef" : 1.0,
             "FullDepthMultiplier" : 0.5
@@ -134,5 +140,20 @@
         "SwitchFractionDn" : 0.8,
         "SwitchFractionUp" : 0.9,
         "ReferenceHead"     : 0.0
+    },
+    "Debug" : {
+        "FileGroup" : {
+            "all" : false,
+            "definitions" : false,
+            "finalization" : false,
+            "geometry" : false,
+            "initialization" : false,
+            "interface" : false,
+            "output" : false,
+            "timeloop" : false,
+            "utility" : false
+        },
+        "SetupYN"  : true,
+        "OutputYN" : true
     }
 }

@@ -285,7 +285,7 @@ module geometry
             integer, pointer ::  Npack, thisP(:), BranchExists(:), thisSolve(:),  tM
             real(8), pointer :: area(:), depth(:), head(:), hyddepth(:), hydradius(:)
             real(8), pointer :: length(:), perimeter(:), topwidth(:), velocity(:)
-            real(8), pointer :: volume(:), zBtm(:), Kfac(:), dHdA(:), ell(:)
+            real(8), pointer :: volume(:), zBtm(:), Kfac(:), dHdA(:), ell(:), ellMax(:)
             real(8), pointer :: zCrown(:), fullArea(:), fulldepth(:), fullperimeter(:)
             real(8), pointer :: fullhyddepth(:)
             real(8), pointer :: grav
@@ -310,6 +310,7 @@ module geometry
             depth         => elemR(:,er_Depth)
             dHdA          => elemR(:,er_dHdA)
             ell           => elemR(:,er_ell)
+            ellMax        => elemR(:,er_ell_max)
             head          => elemR(:,er_Head)
             hyddepth      => elemR(:,er_HydDepth)
             hydradius     => elemR(:,er_HydRadius)
@@ -376,6 +377,7 @@ module geometry
                                 topwidth(tB)  = setting%ZeroValue%Topwidth
                                 hydRadius(tB) = fulldepth(tB) / fullperimeter(tB)
                                 dHdA(tB)      = oneR / setting%ZeroValue%Topwidth
+                                ell(tB)       = ellMax(tB)
 
                             elseif ((depth(tB) < setting%ZeroValue%Depth) .and. (setting%ZeroValue%UseZeroValues)) then
 
@@ -386,6 +388,8 @@ module geometry
                                 perimeter(tB) = topwidth(tB) + setting%ZeroValue%Depth
                                 hydRadius(tB) = setting%ZeroValue%Area / perimeter(tB)
                                 dHdA(tB)      = oneR / topwidth(tB)
+                                ell(tB)       = setting%ZeroValue%Depth !%hydDepth(tB)  20220712 brh
+
                             elseif ((depth(tB) .le. zeroR) .and. (.not. setting%ZeroValue%UseZeroValues)) then
                                 depth(tB) = zeroR
                                 area(tB)  = zeroR
@@ -394,6 +398,7 @@ module geometry
                                 perimeter(tB) = zeroR
                                 hydRadius(tB) = zeroR
                                 dHdA(tB)      = oneR / setting%ZeroValue%Topwidth
+                                ell(tB)       = zeroR
                             else
                                 !% not surcharged and non-negligible depth
                                 select case (elemI(tB,ei_geometryType))
@@ -450,6 +455,8 @@ module geometry
                                     perimeter(tB)= circular_perimeter_from_hydradius_singular (tB,hydRadius(tB))
                                     ell(tB)      = geo_ell_singular (tB) 
                                     dHdA(tB)     = oneR / topwidth(tB)
+
+                                    ! write(*,"(A,i5,10f12.5)") 'GGG ell ',tB, ell(tB), depth(tB), area(tB), fulldepth(tB)
                                 case default
                                     print *, 'CODE ERROR: geometry type unknown for # ', elemI(tB,ei_geometryType)
                                     print *, 'which has key ',trim(reverseKey(elemI(tB,ei_geometryType)))
@@ -1478,9 +1485,10 @@ subroutine geo_head_from_ell (thisColP)
             thisP    => elemP(1:Npack,thisColP_closed_CC)
             where (isSlot(thisP)) 
                 volume(thisP) = volume(thisP)  + SlotVolume(thisP)
-                area(thisP)   = area(thisP)    + SlotArea(thisP)
+                ! area(thisP)   = area(thisP)    + SlotArea(thisP)
                 depth(thisP)  = depth(thisP)   + SlotDepth(thisP)
                 head(thisP)   = head(thisP)    + SlotDepth(thisP)
+                ell(thisP)    = ellMax(thisP)
                 Overflow(thisP) = zeroR
             end where 
         end if
@@ -1541,7 +1549,7 @@ subroutine geo_head_from_ell (thisColP)
         !% Declarations:
             integer, intent(in) :: thisColP_JM
             integer, pointer :: Npack, thisP(:), tM, BranchExists(:)
-            real(8), pointer :: area(:), depth(:), head(:), length(:), volume(:), zcrown(:)
+            real(8), pointer :: area(:), depth(:), head(:), length(:), volume(:), zcrown(:), ell(:)
             real(8), pointer :: fullDepth(:), fullArea(:), fPNumber(:), PNumber(:), PCelerity(:)
             real(8), pointer :: SlotWidth(:), SlotVolume(:), SlotDepth(:), SlotArea(:), ellMax(:)
             real(8), pointer :: overflow(:), grav, TargetPCelerity, PreissmannAlpha
@@ -1562,6 +1570,7 @@ subroutine geo_head_from_ell (thisColP)
             overflow      => elemR(:,er_VolumeOverFlow)
             volume        => elemR(:,er_Volume)
             zCrown        => elemR(:,er_Zcrown)
+            ell           => elemR(:,er_ell)
             ellMax        => elemR(:,er_ell_max)
             fUp           => elemI(:,ei_Mface_uL)
             fDn           => elemI(:,ei_Mface_dL)
@@ -1614,10 +1623,33 @@ subroutine geo_head_from_ell (thisColP)
                             
                             !% add the slot geometry back to previously solved geometry
                             volume(tB) = volume(tB)  + SlotVolume(tB)
-                            area(tB)   = area(tB)    + SlotArea(tB)
+                            ! area(tB)   = area(tB)    + SlotArea(tB)
                             depth(tB)  = depth(tB)   + SlotDepth(tB)
+                            ell(tB)    = ellMax(tB)
                             Overflow(tB) = zeroR
-                        end if  
+                        end if 
+
+                        !% Now adjust the preissmann number for the next RK-step
+                        select case (SlotMethod)
+                            !% for a static slot, the preissmann number will always be one.
+                            case (StaticSlot)
+                                PNumber(tB) = oneR
+
+                            !% for dynamic slot, preissmann number is adjusted
+                            case (DynamicSlot)
+                                if (isSlot(tB)) then
+                                    !% get a new decreased preissmann number for the next time step for elements having a slot
+                                    PNumber(tB) = max((PNumber(tB) ** twoR - PNumber(tB) + oneR)/PNumber(tB), oneR)
+                                else
+                                    !% reset the preissmann number for every CC element not having a slot
+                                    PNumber(tB) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(tB)))
+                                end if
+
+                            case default
+                                print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
+                                print *, 'which has key ',trim(reverseKey(SlotMethod))
+                                stop 387568
+                        end select 
                     end if
                 end do
                 !% handle the downstream branches
@@ -1645,10 +1677,33 @@ subroutine geo_head_from_ell (thisColP)
 
                             !% add the slot geometry back to previously solved geometry
                             volume(tB) = volume(tB)  + SlotVolume(tB)
-                            area(tB)   = area(tB)    + SlotArea(tB)
+                            ! area(tB)   = area(tB)    + SlotArea(tB)
                             depth(tB)  = depth(tB)   + SlotDepth(tB)
+                            ell(tB)    = ellMax(tB)
                             Overflow(tB) = zeroR
                         end if
+
+                        !% Now adjust the preissmann number for the next RK-step
+                        select case (SlotMethod)
+                            !% for a static slot, the preissmann number will always be one.
+                            case (StaticSlot)
+                                PNumber(tB) = oneR
+
+                            !% for dynamic slot, preissmann number is adjusted
+                            case (DynamicSlot)
+                                if (isSlot(tB)) then
+                                    !% get a new decreased preissmann number for the next time step for elements having a slot
+                                    PNumber(tB) = max((PNumber(tB) ** twoR - PNumber(tB) + oneR)/PNumber(tB), oneR)
+                                else
+                                    !% reset the preissmann number for every CC element not having a slot
+                                    PNumber(tB) =  TargetPCelerity / (PreissmannAlpha * sqrt(grav * ellMax(tB)))
+                                end if
+
+                            case default
+                                print *, 'CODE ERROR Slot Method type unknown for # ', SlotMethod
+                                print *, 'which has key ',trim(reverseKey(SlotMethod))
+                                stop 387568
+                        end select
                     end if
                 end do
             end do

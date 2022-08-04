@@ -901,6 +901,8 @@ module define_indexes
         enumerator :: fr_Topwidth_u             !% topwidth on upstream side of face
         enumerator :: fr_Velocity_d             !% velocity on downstream side of face
         enumerator :: fr_Velocity_u             !% velocity on upstream side of face
+        enumerator :: fr_SlotVolume_d
+        enumerator :: fr_SlotVolume_u
         enumerator :: fr_Preissmann_Number      !% preissmann number at face
 
         !% HACK: THE FOLLOWING MAY NEED TO BE RESTORED

@@ -657,7 +657,7 @@ module utility
             dt  => setting%Time%Hydraulics%Dt
         !%------------------------------------------------------------------
 
-        !print *, 'dt = ',setting%Time%Hydraulics%Dt
+        ! print *, 'dt = ',setting%Time%Hydraulics%Dt
         !print *, 'VolOver ',elemR(48,er_VolumeOverFlow), elemR(48,er_Volume)
 
         ! hr = 72.d0
@@ -689,49 +689,49 @@ module utility
         !print *, 'surcharge   ',elemYN(iet,eYN_isSurcharged)
         !print *, 'jump type   ',reverseKey(faceI(ift,fi_jump_type))
 
-        print *, ' '
-        print *, 'Overflow '
-        print *, elemR(48,er_VolumeOverFlow), elemR(49,er_VolumeOverFlow), elemR(50,er_VolumeOverFlow)
-        print *, ' '
+        ! print *, ' '
+        ! print *, 'Overflow '
+        ! print *, elemR(48,er_VolumeOverFlow), elemR(49,er_VolumeOverFlow), elemR(50,er_VolumeOverFlow)
+        ! print *, ' '
 
-        print *, 'small depth Up 1', elemYN(ietU1,eYN_isSmallDepth)
-        print *, 'small depth Up 2', elemYN(ietU2,eYN_isSmallDepth)
-        print *, 'small depth Dn 1', elemYN(ietD1,eYN_isSmallDepth)
-        print *, 'zerodepth Up 1  ', elemYN(ietU1,eYN_isZeroDepth)
-        print *, 'zerodepth Up 2  ', elemYN(ietU2,eYN_isZeroDepth)
-        print *, 'zerodepth Dn 1  ', elemYN(ietD1,eYN_isZeroDepth)
+        ! print *, 'small depth Up 1', elemYN(ietU1,eYN_isSmallDepth)
+        ! print *, 'small depth Up 2', elemYN(ietU2,eYN_isSmallDepth)
+        ! print *, 'small depth Dn 1', elemYN(ietD1,eYN_isSmallDepth)
+        ! print *, 'zerodepth Up 1  ', elemYN(ietU1,eYN_isZeroDepth)
+        ! print *, 'zerodepth Up 2  ', elemYN(ietU2,eYN_isZeroDepth)
+        ! print *, 'zerodepth Dn 1  ', elemYN(ietD1,eYN_isZeroDepth)
 
         !if (setting%Time%Now/3600.0 > 388.0) then
 
-        hr = elemR(ietU1(3),er_Head)
+        ! hr = elemR(ietU1(3),er_Head)
 
-        write(*,"(A,10f12.5)") 'Depth ', elemR(ietU1(1),er_Depth), faceR(iftU1(1),fr_HydDepth_u), faceR(iftU1(1),fr_HydDepth_d), &
-             elemR(ietU1(2),er_Depth), elemR(ietu1(3),er_Depth)
-        write(*,"(A,10f12.5)") 'Vol   ', elemR(ietU1(1),er_Volume), elemR(ietU1(2),er_Volume), elemR(ietU1(3),er_Volume), elemR(ietD1(2),er_Volume)
+        ! write(*,"(A,10f12.5)") 'Depth ', elemR(ietU1(1),er_Depth), faceR(iftU1(1),fr_HydDepth_u), faceR(iftU1(1),fr_HydDepth_d), &
+        !      elemR(ietU1(2),er_Depth), elemR(ietu1(3),er_Depth)
+        ! write(*,"(A,10f12.5)") 'Vol   ', elemR(ietU1(1),er_Volume), elemR(ietU1(2),er_Volume), elemR(ietU1(3),er_Volume), elemR(ietD1(2),er_Volume)
 
-        write(*,"(A,10f12.5)") 'Q Up 1', &
-        elemR(ietU1(1),er_Flowrate), faceR(iftU1(1),fr_Flowrate), faceR(iftU1(1),fr_Flowrate_Conservative),   elemR(ietU1(2),er_Flowrate)
+        ! write(*,"(A,10f12.5)") 'Q Up 1', &
+        ! elemR(ietU1(1),er_Flowrate), faceR(iftU1(1),fr_Flowrate), faceR(iftU1(1),fr_Flowrate_Conservative),   elemR(ietU1(2),er_Flowrate)
 
-        !write(*,"(A,10f16.9)") 'Interp Weight Q', &
-        !elemR(ietU1(1),er_InterpWeight_dQ), elemR(ietU1(2),er_InterpWeight_uQ)
+        ! !write(*,"(A,10f16.9)") 'Interp Weight Q', &
+        ! !elemR(ietU1(1),er_InterpWeight_dQ), elemR(ietU1(2),er_InterpWeight_uQ)
 
-        !write(*,"(A,10f16.9)") 'Interp Weight H', &
-        !elemR(ietU1(1),er_InterpWeight_dH), elemR(ietU1(2),er_InterpWeight_uH)
+        ! !write(*,"(A,10f16.9)") 'Interp Weight H', &
+        ! !elemR(ietU1(1),er_InterpWeight_dH), elemR(ietU1(2),er_InterpWeight_uH)
 
-        write(*,"(A,10f12.5)") 'Q Up 2', &
-        elemR(ietU2(1),er_Flowrate), faceR(iftU2(1),fr_Flowrate), faceR(iftU2(1),fr_Flowrate_Conservative),   elemR(ietU2(2),er_Flowrate)
+        ! write(*,"(A,10f12.5)") 'Q Up 2', &
+        ! elemR(ietU2(1),er_Flowrate), faceR(iftU2(1),fr_Flowrate), faceR(iftU2(1),fr_Flowrate_Conservative),   elemR(ietU2(2),er_Flowrate)
 
-        write(*,"(A,10f12.5)") 'Q Dn 1', &
-        elemR(ietD1(2),er_Flowrate), faceR(iftD1(1),fr_Flowrate), faceR(iftD1(1),fr_Flowrate_Conservative),  elemR(ietD1(3),er_Flowrate) 
+        ! write(*,"(A,10f12.5)") 'Q Dn 1', &
+        ! elemR(ietD1(2),er_Flowrate), faceR(iftD1(1),fr_Flowrate), faceR(iftD1(1),fr_Flowrate_Conservative),  elemR(ietD1(3),er_Flowrate) 
 
-        write(*,"(A,10f12.5)") 'H Up 1', &
-        elemR(ietU1(1),er_Head) -hr, faceR(iftU1(1),fr_Head_u)-hr, elemR(ietU1(2),er_Head)-hr, elemR(ietU1(3),er_Head)-hr
+        ! write(*,"(A,10f12.5)") 'H Up 1', &
+        ! elemR(ietU1(1),er_Head) -hr, faceR(iftU1(1),fr_Head_u)-hr, elemR(ietU1(2),er_Head)-hr, elemR(ietU1(3),er_Head)-hr
 
-        write(*,"(A,10f12.5)") 'H Up 2', &
-        elemR(ietU2(1),er_Head)-hr, faceR(iftU2(1),fr_Head_u)-hr, elemR(ietU2(2),er_Head)-hr, elemR(ietU2(3),er_Head)-hr
+        ! write(*,"(A,10f12.5)") 'H Up 2', &
+        ! elemR(ietU2(1),er_Head)-hr, faceR(iftU2(1),fr_Head_u)-hr, elemR(ietU2(2),er_Head)-hr, elemR(ietU2(3),er_Head)-hr
 
-        write(*,"(A,10f12.5)") 'H Dn 1', &
-        elemR(ietD1(1),er_Head)-hr, elemR(ietD1(2),er_Head)-hr, faceR(iftD1(1),fr_Head_u)-hr, elemR(ietD1(3),er_Head)-hr
+        ! write(*,"(A,10f12.5)") 'H Dn 1', &
+        ! elemR(ietD1(1),er_Head)-hr, elemR(ietD1(2),er_Head)-hr, faceR(iftD1(1),fr_Head_u)-hr, elemR(ietD1(3),er_Head)-hr
 
         ! write(*,"(A,10f12.5)")     'H       ',                &         
         ! faceR(ift(1),fr_Head_u)-hr, faceR(ift(1),fr_Head_d)-hr ,elemR(iet(1),er_Head)-hr ,  &

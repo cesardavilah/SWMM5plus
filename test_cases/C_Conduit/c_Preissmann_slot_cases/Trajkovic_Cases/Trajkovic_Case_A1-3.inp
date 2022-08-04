@@ -58,7 +58,7 @@ DRY_ONLY         NO
 [OUTFALLS]
 ;;Name           Elevation  Type       Stage Data       Gated    Route To        
 ;;-------------- ---------- ---------- ---------------- -------- ----------------
-7                 0.0       FIXED   0.0             NO                       
+7                 -0.1       FIXED   0.0             NO                       
 
 [CONDUITS]
 ;;Name           From Node        To Node          Length     Roughness  InOffset   OutOffset  InitFlow   MaxFlow   

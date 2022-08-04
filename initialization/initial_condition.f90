@@ -870,7 +870,7 @@ contains
                 elemR(:,er_ell_max)               = ((elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) * elemR(:,er_BreadthMax) + &
                                                     elemR(:,er_AreaBelowBreadthMax)) / elemR(:,er_BreadthMax) 
                 where (elemR(:,er_Depth)<elemR(:,er_FullDepth))
-                    elemR(:,er_Area)              = (elemSGR(:,esgr_Circular_Radius) **2) * &
+                    elemR(:,er_Area)              = (elemSGR(:,esgr_Circular_Radius) **2.0) * &
                                     (acos(1.0 - (elemR(:,er_Depth)/elemSGR(:,esgr_Circular_Radius))) - &
                                     sin(2.0*acos(1.0 - (elemR(:,er_Depth)/elemSGR(:,esgr_Circular_Radius))))/2.0 )
                     elemR(:,er_SlotDepth)         = zeroR
@@ -1658,6 +1658,7 @@ contains
         integer, pointer     :: BranchIdx, JBgeometryType, JmType, curveID, NumRows, Fidx
         integer              :: nbranches
         real(8), allocatable :: integrated_volume(:)
+        real(8)              :: LupMax, LdnMax
 
         character(64) :: subroutine_name = 'init_IC_get_junction_data'
         !--------------------------------------------------------------------------
@@ -1854,6 +1855,19 @@ contains
             elemR(JBidx,er_Volume_N0)    = elemR(JBidx,er_Volume)
             elemR(JBidx,er_Volume_N1)    = elemR(JBidx,er_Volume)
         end do
+
+        !% --- set a JM length based on longest branches (20220711brh)
+        LupMax = elemR(JMidx+1,er_Length) * real(elemSI(JMidx+1,esi_JunctionBranch_Exists),8)                              
+        do ii=2,max_up_branch_per_node
+            JBidx = JMidx + 2*ii - 1
+            LupMax = max(elemR(JBidx,er_Length) * real(elemSI(JBidx,esi_JunctionBranch_Exists),8), LupMax)
+        end do    
+        LdnMax = elemR(JMidx+2,er_Length) * real(elemSI(JMidx+2,esi_JunctionBranch_Exists),8)  
+        do ii=2,max_dn_branch_per_node
+            JBidx = JMidx + 2*ii
+            LdnMax = max(elemR(JBidx,er_Length) * real(elemSI(JBidx,esi_JunctionBranch_Exists),8), LdnMax)    
+        end do
+        elemR(JMidx,er_Length) = LupMax + LdnMax
         
         !% get junction main geometry based on type
         JmType => elemSI(JMidx,esi_JunctionMain_Type)
@@ -1862,10 +1876,10 @@ contains
 
         case (ImpliedStorage)
             !% the JM characteristic length is the sum of the two longest branches
-            elemR(JMidx,er_Length) = max(elemR(JMidx+1,er_Length), elemR(JMidx+3,er_Length), &
-                                            elemR(JMidx+5,er_Length)) + &
-                                        max(elemR(JMidx+2,er_Length), elemR(JMidx+4,er_Length), &
-                                            elemR(JMidx+6,er_Length))
+            ! elemR(JMidx,er_Length) = max(elemR(JMidx+1,er_Length), elemR(JMidx+3,er_Length), &
+            !                                 elemR(JMidx+5,er_Length)) + &
+            !                             max(elemR(JMidx+2,er_Length), elemR(JMidx+4,er_Length), &
+            !                                 elemR(JMidx+6,er_Length))
 
             !% --- Plane area is the sum of the branch plane area 
             !%     This uses simplified geometry approximations as the junction main is only
@@ -2205,7 +2219,7 @@ contains
 !%==========================================================================
 !%==========================================================================
 !%
-    subroutine init_IC_set_SmallVolumes ()
+     subroutine init_IC_set_SmallVolumes ()
         !%------------------------------------------------------------------
         !% set the small volume values in elements that are used with
         !% the small depth cutoff to change the time-marching solution
@@ -2268,7 +2282,7 @@ contains
         tempDepth = Depth
         depth = depthCutoff
                 
-        !% --- rectangular conduit
+        !% --- rectangular channel
         tPack = zeroI
         npack = count(geoType == rectangular)
         if (npack > 0) then

@@ -1312,27 +1312,33 @@ module lowlevel_rk2
         fSlot(fUp(thisP)) = .false.
         fSlot(fDn(thisP)) = .false.
         
-        !% smooth the preissmann number from using simple face interpolation
-        PNumber(thisP) = max(onehalfR * (fPNumber(fUp(thisP)) + fPNumber(fDn(thisP))), oneR)
-        
         !% find out the slot volume/ area/ and the faces that are surcharged
         where (volume(thisP) > fullVolume(thisP))
             SlotVolume(thisP) = volume(thisP) - fullvolume(thisP)
             SlotArea(thisP)   = SlotVolume(thisP) / length(thisP)
             fSlot(fUp(thisP)) = .true.
             fSlot(fDn(thisP)) = .true.
-        end where
-
-        !% Calculate the preissmann celerity with the already set preissmann number from
-        !% previous time/rk step. Also, any cell containig two slot faces will also designated
-        !% to have a slot. Which ensures a preissmann celerity in that element.
-        where (fSlot(fUp(thisP)) .and. fSlot(fDn(thisP)))
             isSlot(thisP)    = .true.
+            !% smooth the preissmann number from using simple face interpolation
+            PNumber(thisP) = max(onehalfR * (fPNumber(fUp(thisP)) + fPNumber(fDn(thisP))), oneR)
             !% Preissmann Celerity
             PCelerity(thisP) = min(TargetPCelerity / PNumber(thisP), TargetPCelerity)
             !% find the water height at the slot
             SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
         end where
+
+        !% Calculate the preissmann celerity with the already set preissmann number from
+        !% previous time/rk step. Also, any cell containig two slot faces will also designated
+        !% to have a slot. Which ensures a preissmann celerity in that element.
+        ! where (fSlot(fUp(thisP)) .and. fSlot(fDn(thisP)))
+        !     isSlot(thisP)    = .true.
+        !     !% smooth the preissmann number from using simple face interpolation
+        !     PNumber(thisP) = max(onehalfR * (fPNumber(fUp(thisP)) + fPNumber(fDn(thisP))), oneR)
+        !     !% Preissmann Celerity
+        !     PCelerity(thisP) = min(TargetPCelerity / PNumber(thisP), TargetPCelerity)
+        !     !% find the water height at the slot
+        !     SlotDepth(thisP) = (SlotArea(thisP) * (TargetPCelerity ** twoR))/(grav * (PNumber(thisP) ** twoR) * (fullArea(thisP)))
+        ! end where
 
         !% Now adjust the preissmann number for the next RK-step
         select case (SlotMethod)
