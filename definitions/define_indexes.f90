@@ -813,6 +813,16 @@ module define_indexes
     !% note, this must be changed to whatever the last enum element is!
     integer, parameter :: Ncol_elemSGR_Parabolic =  esgr_Circular_lastplusone-1
 
+    !% Define the column indexes for elemGSR(:,:) for power function channel
+    enum, bind(c)
+         enumerator ::  esgr_Power_Function_Breadth = 1     !% breadth for power function geometry
+         enumerator ::  esgr_Power_Function_Radius
+         enumerator ::  esgr_Power_Function_Power           !% power for power function (1/GAMMA)
+         enumerator ::  esgr_Power_Function_lastplusone !% must be last enum item
+    end enum
+    !% note, this must be changed to whatever the last enum element is!
+    integer, parameter :: Ncol_elemSGR_Power_Function =  esgr_Power_Function_lastplusone-1
+
     !% Define the column indexes for elemGSR(:,:) for basket_handle_conduit
     enum, bind(c)
          enumerator ::  esgr_Basket_Handle_BreadthMax = 1   !% breadth max for basket handle geometry

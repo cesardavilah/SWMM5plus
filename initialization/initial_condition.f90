@@ -1272,6 +1272,42 @@ contains
                     
                 endwhere
 
+            case (lParabolic)
+
+                where (elemI(:,ei_link_Gidx_BIPquick) == thisLink)
+
+                    elemI(:,ei_geometryType) = power_function
+
+                    !% --- independent data
+                    elemSGR(:,esgr_Power_Function_Breadth)   = link%R(thisLink,lr_BreadthScale)
+                    elemSGR(:,esgr_Power_Function_Power)     = 
+                    !elemSGR(:,esgr_Power_Function_Radius)    = elemSGR(:,esgr_Parabolic_Breadth) / twoR / sqrt(link%R(thisLink,lr_FullDepth))
+                    elemR(:,er_BreadthMax)              = elemSGR(:,esgr_Power_Function_Breadth)
+                    elemR(:,er_FullDepth)               = link%R(thisLink,lr_FullDepth)
+                    elemR(:,er_FullHydDepth)            = (twoR/threeR) * link%R(thisLink,lr_FullDepth) !/ needs finishing
+
+                    !% --- dependent on full depth
+                    elemR(:,er_FullPerimeter)           = elemR(:,er_BreadthMax) * elemR(:,er_FullDepth) / ()
+
+                    elemR(:,er_ZbreadthMax)             = elemR(:,er_FullDepth) + elemR(:,er_Zbottom)
+                    elemR(:,er_Zcrown)                  = elemR(:,er_Zbottom) + elemR(:,er_FullDepth)
+                    elemR(:,er_FullArea)                = (fourR / threeR) * elemSGR(:,esgr_Parabolic_Radius) * elemR(:, er_FullDepth) *  sqrt(elemR(:, er_FullDepth))
+                    !% --- dependent on full area
+                    elemR(:,er_FullVolume)              = elemR(:,er_FullArea) * elemR(:,er_Length)
+                    elemR(:,er_AreaBelowBreadthMax)     = elemR(:,er_FullArea)
+                    elemR(:,er_ell_max)                 = (elemR(:,er_Zcrown) - elemR(:,er_ZbreadthMax)) &
+                                                         * elemR(:,er_BreadthMax)                      &
+                                                         + elemR(:,er_AreaBelowBreadthMax) / elemR(:,er_BreadthMax) 
+                    !% --- store IC data
+                    elemR(:, er_Area) = (fourR / threeR) * elemSGR(:,esgr_Parabolic_Radius) * elemR(:, er_Depth) *  sqrt(elemR(:, er_Depth))
+                    elemR(:,er_Area_N0)       = elemR(:,er_Area)
+                    elemR(:,er_Area_N1)       = elemR(:,er_Area)
+                    elemR(:,er_Volume)        = elemR(:,er_Area) * elemR(:,er_Length)
+                    elemR(:,er_Volume_N0)     = elemR(:,er_Volume)
+                    elemR(:,er_Volume_N1)     = elemR(:,er_Volume)
+                    
+                endwhere
+
             case default
 
                 print *, 'In, ', subroutine_name

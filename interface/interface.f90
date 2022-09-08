@@ -1630,13 +1630,28 @@ contains
                     end select
 
                 case (API_POWERFUNC)
-                    print *, 'CODE ERROR: API_POWERFUNC geometry not handled yet'
+                    !print *, 'CODE ERROR: API_POWERFUNC geometry not handled yet'
                     call util_crashpoint(398472)
                     select case (attr)
                         case (api_linkf_geometry)
+                            link_value = lPower_function
                         case (api_linkf_xsect_wMax)
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_wMax, link_value)
+                            thisposition = trim(subroutine_name)//'_Q16'
+                            call print_api_error(error, thisposition)
                         case (api_linkf_xsect_yFull)
+                            call load_api_procedure("api_get_linkf_attribute")
+                            error = ptr_api_get_linkf_attribute(link_idx-1, api_linkf_xsect_yFull, link_value)
+                            thisposition = trim(subroutine_name)//'_R17'
+                            call print_api_error(error, thisposition)
                         case default
+                            !% power function geometry does not have certain geometric features (i.e. bottom width) 
+                            if (isInt) then
+                                link_value = nullvalueI
+                            else
+                                link_value = nullvalueR
+                            end if
                     end select
 
                 case (API_RECT_TRIANG)
