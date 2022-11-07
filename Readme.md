@@ -9,26 +9,34 @@ Documentation of this Beta release is being developed.
 Documentation of the Alpha release (some of which is obsolete) can be found in Technical Report https://doi.org/10.18738/T8/WQZ5EX
 
 
-Quickstart:
+###Quickstart:
+##### 1.- Download cmake for your system
 
-1.- Download cmake for your system
-
-https://cmake.org/download/
+[https://cmake.org/download/](http://https://cmake.org/download/ "https://cmake.org/download/")
 
 or
 
-$ sudo apt-get install cmake
+`$ sudo apt-get install cmake`
 
-2.- Clone this github repository
+------------
 
-$ git clone https://github.com/cesardavilah/SWMM5plus.git
+##### 2.- Clone this github repository
 
-3.- To configure the project for building, create a folder called 'build', navigate into it and use the command
+`$ git clone https://github.com/cesardavilah/SWMM5plus.git`
 
-$ cmake ..
+------------
 
-4.- Building the project, use:
+##### 3.- To configure the project for building
 
-$ make
+Create a folder called "build", navigate into it and use the command
 
-5.- The resulting binary can be found inside the /bin directory at the root of the project
+`$ cmake ..`
+
+
+------------
+
+##### 4.- To build the project, use:
+
+`$ make`
+
+##### 5.- The resulting binary "SWMM" can be found inside the /bin directory at the root of the project
