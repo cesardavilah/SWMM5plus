@@ -37,3 +37,4 @@ dwflow/
 NCIMM-White-Box-Testing/
 bin/
 lib/
+external/*
