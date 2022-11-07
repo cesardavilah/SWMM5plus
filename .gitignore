@@ -26,7 +26,6 @@ SWMM
 swmm5_C
 
 # Directories
-interface/src
 debug*
 tests/*
 !tests/test*
@@ -36,3 +35,5 @@ build/
 debug/
 dwflow/
 NCIMM-White-Box-Testing/
+bin/
+lib/

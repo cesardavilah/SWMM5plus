@@ -57,17 +57,23 @@ endif()
 FetchContent_Declare(
     epaswmm5
     URL https://github.com/USEPA/Stormwater-Management-Model/archive/v5.1.13.tar.gz
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/epaswmm5/src
+    BINARY_DIR ${CMAKE_SOURCE_DIR}/external/epaswmm5/bin
 )
 
 FetchContent_Declare(
     json_fortran
     GIT_REPOSITORY https://github.com/jacobwilliams/json-fortran.git
     GIT_TAG 3ab8f98209871875325c6985dd0e50085d1c82c2 #Release 8.3.0
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/json_fortran/src
+    BINARY_DIR ${CMAKE_SOURCE_DIR}/external/json_fortran/bin
 )
 FetchContent_Declare(
     hdf5
     GIT_REPOSITORY https://github.com/HDFGroup/hdf5.git
     GIT_TAG 3e847e003632bdd5fdc189ccbffe25ad2661e16f #Release 1.12.2
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/hdf5/src
+    BINARY_DIR ${CMAKE_SOURCE_DIR}/external/hdf5/bin
 )
 Fetchcontent_MakeAvailable(epaswmm5)
 FetchContent_GetProperties(json_fortran hdf5)
@@ -122,32 +128,32 @@ $ export HDF5_DIR=path/to/hdf5/")
 endif()
 
 #Following sh script
-file(COPY ${epaswmm5_SOURCE_DIR}/src/ DESTINATION ${CMAKE_SOURCE_DIR}/interface/src)
-file(COPY ${CMAKE_SOURCE_DIR}/interface/api.h DESTINATION ${CMAKE_SOURCE_DIR}/interface/src)
-file(COPY ${CMAKE_SOURCE_DIR}/interface/api.c DESTINATION ${CMAKE_SOURCE_DIR}/interface/src)
-file(COPY ${CMAKE_SOURCE_DIR}/interface/api_error.h DESTINATION ${CMAKE_SOURCE_DIR}/interface/src)
-file(COPY ${CMAKE_SOURCE_DIR}/interface/api_error.c DESTINATION ${CMAKE_SOURCE_DIR}/interface/src)
+# file(COPY ${epaswmm5_SOURCE_DIR}/src/ DESTINATION ${CMAKE_SOURCE_DIR}/interface/src)
+file(COPY ${CMAKE_SOURCE_DIR}/src/interface/api.h DESTINATION ${epaswmm5_SOURCE_DIR}/src)
+file(COPY ${CMAKE_SOURCE_DIR}/src/interface/api.c DESTINATION ${epaswmm5_SOURCE_DIR}/src)
+file(COPY ${CMAKE_SOURCE_DIR}/src/interface/api_error.h DESTINATION ${epaswmm5_SOURCE_DIR}/src)
+file(COPY ${CMAKE_SOURCE_DIR}/src/interface/api_error.c DESTINATION ${epaswmm5_SOURCE_DIR}/src)
 
-file(READ ${CMAKE_SOURCE_DIR}/interface/add_to_controls.c CONTROLS)
-file(READ ${CMAKE_SOURCE_DIR}/interface/add_to_funcs.h FUNCS)
-file(APPEND ${CMAKE_SOURCE_DIR}/interface/src/controls.c "${CONTROLS}")
-file(APPEND ${CMAKE_SOURCE_DIR}/interface/src/funcs.h "${FUNCS}")
+file(READ ${CMAKE_SOURCE_DIR}/src/interface/add_to_controls.c CONTROLS)
+file(READ ${CMAKE_SOURCE_DIR}/src/interface/add_to_funcs.h FUNCS)
+file(APPEND ${epaswmm5_SOURCE_DIR}/src/controls.c "${CONTROLS}")
+file(APPEND ${epaswmm5_SOURCE_DIR}/src/funcs.h "${FUNCS}")
 message(STATUS "Appended to controls.c and funcs.h")
 
 if (build_configuration STREQUAL "dwflow")
-    commentout(${CMAKE_SOURCE_DIR}/interface/src/dwflow.c 248)
-    commentout(${CMAKE_SOURCE_DIR}/interface/src/dwflow.c 249)
-    commentout(${CMAKE_SOURCE_DIR}/interface/src/dwflow.c 250)
-    commentout(${CMAKE_SOURCE_DIR}/interface/src/dwflow.c 251)
-    commentout(${CMAKE_SOURCE_DIR}/interface/src/dwflow.c 252)
+    commentout(${CMAKE_SOURCE_DIR}/src/interface/src/dwflow.c 248)
+    commentout(${CMAKE_SOURCE_DIR}/src/interface/src/dwflow.c 249)
+    commentout(${CMAKE_SOURCE_DIR}/src/interface/src/dwflow.c 250)
+    commentout(${CMAKE_SOURCE_DIR}/src/interface/src/dwflow.c 251)
+    commentout(${CMAKE_SOURCE_DIR}/src/interface/src/dwflow.c 252)
     message(STATUS "Commented out lines [248-252] from 'interface/src/dwflow.c'")
 endif()
 
 
 file(GLOB
     SWMM_SOURCES
-        ${CMAKE_SOURCE_DIR}/interface/src/*.c 
-        ${CMAKE_SOURCE_DIR}/interface/src/*.h
+        ${epaswmm5_SOURCE_DIR}/src/*.c 
+        ${epaswmm5_SOURCE_DIR}/src/*.h
         # ${CMAKE_SOURCE_DIR}/*.h
 )
 file(GLOB
@@ -159,30 +165,38 @@ file(GLOB
         ${json_fortran_SOURCE_DIR}/src/json_file_module.F90
         ${json_fortran_SOURCE_DIR}/src/json_module.F90
 
-        ${CMAKE_SOURCE_DIR}/utility/*.f90 
-        ${CMAKE_SOURCE_DIR}/definitions/*.f90
+        ${CMAKE_SOURCE_DIR}/src/utility/*.f90 
+        ${CMAKE_SOURCE_DIR}/src/definitions/*.f90
         # ${CMAKE_SOURCE_DIR}/interface/*.f90
-        ${CMAKE_SOURCE_DIR}/interface/c_library.f90
-        ${CMAKE_SOURCE_DIR}/interface/interface.f90
-        ${CMAKE_SOURCE_DIR}/initialization/*.f90
-        ${CMAKE_SOURCE_DIR}/geometry/*.f90
-        ${CMAKE_SOURCE_DIR}/timeloop/*.f90
-        ${CMAKE_SOURCE_DIR}/output/*.f90
-        ${CMAKE_SOURCE_DIR}/finalization/*.f90
-        ${CMAKE_SOURCE_DIR}/main/*.f90
+        ${CMAKE_SOURCE_DIR}/src/interface/c_library.f90
+        ${CMAKE_SOURCE_DIR}/src/interface/interface.f90
+        ${CMAKE_SOURCE_DIR}/src/initialization/*.f90
+        ${CMAKE_SOURCE_DIR}/src/geometry/*.f90
+        ${CMAKE_SOURCE_DIR}/src/timeloop/*.f90
+        ${CMAKE_SOURCE_DIR}/src/output/*.f90
+        ${CMAKE_SOURCE_DIR}/src/finalization/*.f90
+        ${CMAKE_SOURCE_DIR}/src/main/*.f90
 )
 
 #Targets
 
 add_library(swmm5 SHARED 
     ${SWMM_SOURCES}
+    
 )
 set_target_properties(swmm5 PROPERTIES LINKER_LANGUAGE C
-CXX_STANDARD 14)
+CXX_STANDARD 14
+LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
+RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
+)
 
 
 add_executable(SWMM
     ${SWMM5X_SOURCES}
+)
+set_target_properties(SWMM PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
 )
 target_include_directories(SWMM PUBLIC
     ${HDF5_INCLUDE_DIR}
@@ -200,9 +214,9 @@ if (DEFINED ENV{FOR_COARRAY_NUM_IMAGES})
 endif()
 
 
-#Testing
-enable_testing()
-add_test(A_Single_Link SWMM
-${CMAKE_SOURCE_DIR}/test_cases/A_Single_Link/SL_sub_IN\=con_OUT\=fix.inp
--s ${CMAKE_SOURCE_DIR}/test_cases/A_Single_Link/settings_SL.json
-)
+# #Testing
+# enable_testing()
+# add_test(A_Single_Link SWMM
+# ${CMAKE_SOURCE_DIR}/test_cases/A_Single_Link/SL_sub_IN\=con_OUT\=fix.inp
+# -s ${CMAKE_SOURCE_DIR}/test_cases/A_Single_Link/settings_SL.json
+# )
